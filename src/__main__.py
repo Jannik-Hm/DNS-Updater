@@ -3,6 +3,7 @@ import ipaddress as ipaddress
 import json as json
 from typing import List, Optional
 
+from global_objects import Record
 
 config_file = open("dns_config.json", "r")
 config = json.load(config_file)
@@ -35,23 +36,6 @@ zone_ids: dict[str, str] = {}
 
 for entry in zones.json()["zones"]:
     zone_ids[entry["name"]] = entry["id"]
-
-class Record(object):
-    ttl: int = 0
-    name: str = ""
-    value: str = ""
-    type: str = ""
-    id: Optional[str]
-
-    def __init__(self, type: str, name: str, value: str, ttl: int, id: str | None = None):
-        self.ttl = ttl
-        self.name = name
-        self.value = value
-        self.type = type
-        self.id = id
-
-    def __str__(self):
-        return "name: "+self.name+", value: "+self.value+", type: "+self.type+", ttl: "+str(self.ttl)+", id: "+str(self.id)
 
 temp: Record = Record(type="A", name="test", value="1.2.3.4", ttl=ttl)
 
