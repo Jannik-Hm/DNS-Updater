@@ -33,10 +33,6 @@ match provider:
     case "hetzner":
         providers.hetzner.updateHetznerEntries(providerConfig=provider_config)
 
-temp: Record = Record(type="A", name="test", value="1.2.3.4", ttl=ttl)
-
-print(temp)
-
 print(prefix_offset)
 
 print()
