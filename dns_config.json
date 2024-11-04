@@ -1,42 +1,48 @@
 {
-  "provider": "hetzner",
-  "provider_config": {
-    "api_token": "<token>"
+  "global": {
+    "ttl": 60,
+    "prefix_offset": "51"
   },
-  "ttl": 60,
-  "ipv4": {
-    "config": [
-      {
-        "zone": "<tld>",
-        "records": [
+  "providers": [
+    {
+      "provider": "hetzner",
+      "provider_config": {
+        "api_token": "<token>"
+      },
+      "ipv4": {
+        "config": [
           {
-            "name": "@"
-          },
+            "zone": "<tld>",
+            "records": [
+              {
+                "name": "@"
+              },
+              {
+                "name": "*"
+              }
+            ]
+          }
+        ]
+      },
+      "ipv6": {
+        "config": [
           {
-            "name": "*"
+            "zone": "<tld>",
+            "records": [
+              {
+                "name": "@",
+                "prefixOffset": "3",
+                "suffix": "fd00::3:0:0:0:6"
+              },
+              {
+                "name": "@",
+                "prefixOffset": "3",
+                "suffix": "fd00::3:0:0:0:6"
+              }
+            ]
           }
         ]
       }
-    ]
-  },
-  "ipv6": {
-    "prefix_offset": "51",
-    "config": [
-      {
-        "zone": "<tld>",
-        "records": [
-          {
-            "name": "@",
-            "prefixOffset": "3",
-            "suffix": "fd00::3:0:0:0:6"
-          },
-          {
-            "name": "@",
-            "prefixOffset": "3",
-            "suffix": "fd00::3:0:0:0:6"
-          }
-        ]
-      }
-    ]
-  }
+    }
+  ]
 }
