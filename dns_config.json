@@ -9,40 +9,31 @@
       "provider_config": {
         "api_token": "<token>"
       },
-      "ipv4": {
-        "config": [
-          {
-            "zone": "<tld>",
-            "records": [
-              {
-                "name": "@"
-              },
-              {
-                "name": "*"
-              }
-            ]
-          }
-        ]
-      },
-      "ipv6": {
-        "config": [
-          {
-            "zone": "<tld>",
-            "records": [
-              {
-                "name": "@",
-                "prefixOffset": "3",
-                "suffix": "fd00::3:0:0:0:6"
-              },
-              {
-                "name": "@",
-                "prefixOffset": "3",
-                "suffix": "fd00::3:0:0:0:6"
-              }
-            ]
-          }
-        ]
-      }
+      "zones": [
+        {
+          "name": "<tld>",
+          "ipv4_records": [
+            {
+              "name": "@"
+            },
+            {
+              "name": "*"
+            }
+          ],
+          "ipv6_records": [
+            {
+              "name": "@",
+              "prefixOffset": "3",
+              "suffix": "::6"
+            },
+            {
+              "name": "@",
+              "prefixOffset": "3",
+              "suffix": "::6"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
