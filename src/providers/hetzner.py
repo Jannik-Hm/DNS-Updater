@@ -78,16 +78,17 @@ def updateHetznerEntries(
             zone_id: str = zone_id_map[zone.zone]
             for record in zone.records:
                 if dns_data[zone_id].records.__contains__("A-" + record.name):
-                    updateRecordsBody.append(
-                        {
-                            "id": dns_data[zone_id].records["A-" + record.name].id,
-                            "zone_id": zone_id,
-                            "type": "A",
-                            "name": record.name,
-                            "value": ipv4Address,
-                            "ttl": globalConfig.ttl,
-                        }
-                    )
+                    if(ipv4Address != dns_data[zone_id].records["A-" + record.name].value):
+                        updateRecordsBody.append(
+                            {
+                                "id": dns_data[zone_id].records["A-" + record.name].id,
+                                "zone_id": zone_id,
+                                "type": "A",
+                                "name": record.name,
+                                "value": ipv4Address,
+                                "ttl": globalConfig.ttl,
+                            }
+                        )
                 else:
                     createRecordsBody.append(
                         {
@@ -103,7 +104,6 @@ def updateHetznerEntries(
         for zone in dnsV6Config:
             zone_id: str = zone_id_map[zone.zone]
             for record in zone.records:
-                dns_record_data = dns_data[zone_id].records["AAAA-" + record.name]
                 record_exists: bool = dns_data[zone_id].records.__contains__(
                     "AAAA-" + record.name
                 )
@@ -112,19 +112,18 @@ def updateHetznerEntries(
                     prefixOffset=record.prefixOffset,
                     currentAddressOrFixedSuffix=(record.suffix or dns_data[zone_id].records["AAAA-" + record.name].value)
                 )
-                print("IPv6 Address:")
-                print(ipv6Address)
                 if record_exists:
-                    updateRecordsBody.append(
-                        {
-                            "id": dns_data[zone_id].records["AAAA-" + record.name].id,
-                            "zone_id": zone_id,
-                            "type": "AAAA",
-                            "name": record.name,
-                            "value": ipv6Address,
-                            "ttl": globalConfig.ttl,
-                        }
-                    )
+                    if(ipv6Address != dns_data[zone_id].records["AAAA-" + record.name].value):
+                        updateRecordsBody.append(
+                            {
+                                "id": dns_data[zone_id].records["AAAA-" + record.name].id,
+                                "zone_id": zone_id,
+                                "type": "AAAA",
+                                "name": record.name,
+                                "value": ipv6Address,
+                                "ttl": globalConfig.ttl,
+                            }
+                        )
                 else:
                     createRecordsBody.append(
                         {
@@ -136,14 +135,8 @@ def updateHetznerEntries(
                         }
                     )
 
-    print(dns_data)
+    print(updateRecordsBody)
 
-    print()
-
-    print(dnsV4Config)
-
-    print()
-
-    print(dnsV6Config)
+    print(createRecordsBody)
 
     return

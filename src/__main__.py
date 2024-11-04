@@ -29,7 +29,6 @@ except requests.exceptions.ConnectTimeout:
 
 for provider in config["providers"]:
 # TODO: add your own token & tld in json files
-    print(provider)
 
     ipv4_config: list[dnsV4Config] = []
     ipv6_config: list[dnsV6Config] = []
@@ -52,15 +51,3 @@ for provider in config["providers"]:
     match provider["provider"]:
         case "hetzner":
             providers.hetzner.updateHetznerEntries(providerConfig=provider_config, dnsV4Config=ipv4_config, ipv4Address=ipv4, dnsV6Config=ipv6_config, ipv6Prefix=ipv6_parts[:4], globalConfig=global_config)
-
-    print(prefix_offset)
-
-    print()
-
-    print(ipv4)
-    print(ipv6_parts)
-
-    print()
-
-    print(ipv4_config)
-    print(ipv6_config)
