@@ -9,9 +9,11 @@ from global_objects import (
     globalConfig,
 )
 from helper_functions import ipv6
+import json as json
 
 
 # TODO: maybe add to global_objects if it can be reused
+# maybe remove this object as it is barely used (only records dict)
 class Zone_Data(object):
     name: str = ""
     records: dict[str, Record] = {}
@@ -34,6 +36,7 @@ def updateHetznerEntries(
 ) -> None:
     hetzner_api_token: str = providerConfig["api_token"]
 
+# TODO: add Timeouts to all requests + error handling
     getZones = requests.get(
         url="https://dns.hetzner.com/api/v1/zones",
         headers={
@@ -137,6 +140,30 @@ def updateHetznerEntries(
 
     print(updateRecordsBody)
 
+    if(updateRecordsBody.__len__() > 0):
+        updateResponse = requests.put(
+                url="https://dns.hetzner.com/api/v1/records/bulk",
+                headers={
+                    "Content-Type": "application/json",
+                    "Auth-API-Token": hetzner_api_token,
+                },
+                data=json.dumps({
+                    "records": updateRecordsBody
+                })
+            )
+
     print(createRecordsBody)
+
+    if(createRecordsBody.__len__() > 0):
+        createResponse = requests.post(
+                url="https://dns.hetzner.com/api/v1/records/bulk",
+                headers={
+                    "Content-Type": "application/json",
+                    "Auth-API-Token": hetzner_api_token,
+                },
+                data=json.dumps({
+                    "records": createRecordsBody
+                })
+            )
 
     return
