@@ -1,7 +1,7 @@
 {
   "global": {
     "ttl": 60,
-    "prefix_offset": "51"
+    "current_prefix_offset": "1"
   },
   "providers": [
     {
@@ -22,14 +22,19 @@
           ],
           "ipv6_records": [
             {
-              "name": "@",
+              "name": "sample1",
+              "prefixOffset": "82",
+              "suffix": "::be24:11ff:fe23:fb1c"
+            },
+            {
+              "name": "sample2",
               "prefixOffset": "3",
               "suffix": "::6"
             },
             {
-              "name": "@",
-              "prefixOffset": "3",
-              "suffix": "::6"
+              "name": "sample3",
+              "prefixOffset": "4",
+              "suffix": "::62"
             }
           ]
         }

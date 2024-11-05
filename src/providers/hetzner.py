@@ -3,9 +3,7 @@ import requests
 from global_objects import (
     Record,
     dnsV4Config,
-    dnsV4ConfigRecord,
     dnsV6Config,
-    dnsV6ConfigRecord,
     globalConfig,
 )
 from helper_functions import ipv6

@@ -10,6 +10,6 @@ class globalConfig(object):
         return str(
             {
                 "ttl": self.ttl,
-                "prefix_offset": hex(self.prefix_offset)
+                "current_prefix_offset": hex(self.prefix_offset)
             }
         )
