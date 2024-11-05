@@ -11,21 +11,6 @@ from global_objects import (
 from helper_functions import ipv6
 import json as json
 
-
-# TODO: maybe add to global_objects if it can be reused
-# maybe remove this object as it is barely used (only records dict)
-class Zone_Data(object):
-    name: str = ""
-    records: dict[str, Record] = {}
-
-    def __init__(self, name: str, records: dict[str, Record]):
-        self.name = name
-        self.records = records
-
-    def __repr__(self):
-        return str({"name": self.name, "records": self.records})
-
-
 def updateHetznerEntries(
     providerConfig: dict[str, str],
     dnsV4Config: list[dnsV4Config],
@@ -45,7 +30,7 @@ def updateHetznerEntries(
         timeout=5,
     )
     # zone_ids: List[str] = zones.json()["zones"]
-    dns_data: dict[str, Zone_Data] = {}
+    dns_records_data: dict[str, dict[str, Record]] = {}
     zone_id_map: dict[str, str] = {}
 
     if getZones.status_code != 200:
@@ -61,7 +46,7 @@ def updateHetznerEntries(
                 return
     else:
         for entry in getZones.json()["zones"]:
-            dns_data[entry["id"]] = Zone_Data(name=entry["name"], records={})
+            dns_records_data[entry["id"]] = {}
             zone_id_map[entry["name"]] = entry["id"]
 
         getRecords = requests.get(
@@ -87,7 +72,7 @@ def updateHetznerEntries(
                     and ipv6Prefix is not None
                     and ipv6Prefix.__len__() >= 4
                 ):
-                    dns_data[entry["zone_id"]].records[
+                    dns_records_data[entry["zone_id"]][
                         entry["type"] + "-" + entry["name"]
                     ] = Record(
                         type=entry["type"],
@@ -105,16 +90,16 @@ def updateHetznerEntries(
                 for zone in dnsV4Config:
                     zone_id: str = zone_id_map[zone.zone]
                     for record in zone.records:
-                        if dns_data[zone_id].records.__contains__("A-" + record.name):
+                        if dns_records_data[zone_id].__contains__("A-" + record.name):
                             if (
                                 ipv4Address
-                                != dns_data[zone_id].records["A-" + record.name].value
+                                != dns_records_data[zone_id]["A-" + record.name].value
                             ):
                                 updateRecordsBody.append(
                                     {
-                                        "id": dns_data[zone_id]
-                                        .records["A-" + record.name]
-                                        .id,
+                                        "id": dns_records_data[zone_id][
+                                            "A-" + record.name
+                                        ].id,
                                         "zone_id": zone_id,
                                         "type": "A",
                                         "name": record.name,
@@ -137,7 +122,7 @@ def updateHetznerEntries(
                 for zone in dnsV6Config:
                     zone_id: str = zone_id_map[zone.zone]
                     for record in zone.records:
-                        record_exists: bool = dns_data[zone_id].records.__contains__(
+                        record_exists: bool = dns_records_data[zone_id].__contains__(
                             "AAAA-" + record.name
                         )
                         ipv6Address: str = ipv6.calculateIPv6Address(
@@ -145,19 +130,23 @@ def updateHetznerEntries(
                             prefixOffset=record.prefixOffset,
                             currentAddressOrFixedSuffix=(
                                 record.suffix
-                                or dns_data[zone_id].records["AAAA-" + record.name].value
+                                or dns_records_data[zone_id][
+                                    "AAAA-" + record.name
+                                ].value
                             ),
                         )
                         if record_exists:
                             if (
                                 ipv6Address
-                                != dns_data[zone_id].records["AAAA-" + record.name].value
+                                != dns_records_data[zone_id][
+                                    "AAAA-" + record.name
+                                ].value
                             ):
                                 updateRecordsBody.append(
                                     {
-                                        "id": dns_data[zone_id]
-                                        .records["AAAA-" + record.name]
-                                        .id,
+                                        "id": dns_records_data[zone_id][
+                                            "AAAA-" + record.name
+                                        ].id,
                                         "zone_id": zone_id,
                                         "type": "AAAA",
                                         "name": record.name,
@@ -186,7 +175,7 @@ def updateHetznerEntries(
                         "Auth-API-Token": hetzner_api_token,
                     },
                     data=json.dumps({"records": updateRecordsBody}),
-                    timeout=10
+                    timeout=10,
                 )
 
                 if updateResponse.status_code != 200:
@@ -210,21 +199,31 @@ def updateHetznerEntries(
                         "Auth-API-Token": hetzner_api_token,
                     },
                     data=json.dumps({"records": createRecordsBody}),
-                    timeout=10
+                    timeout=10,
                 )
 
                 if createResponse.status_code != 200:
                     match createResponse.status_code:
                         case 401:
-                            print("Update AAAA Records Error - " + createResponse.reason)
+                            print(
+                                "Update AAAA Records Error - " + createResponse.reason
+                            )
                         case 403:
-                            print("Update AAAA Records Error - " + createResponse.reason)
+                            print(
+                                "Update AAAA Records Error - " + createResponse.reason
+                            )
                         case 404:
-                            print("Update AAAA Records Error - " + createResponse.reason)
+                            print(
+                                "Update AAAA Records Error - " + createResponse.reason
+                            )
                         case 406:
-                            print("Update AAAA Records Error - " + createResponse.reason)
+                            print(
+                                "Update AAAA Records Error - " + createResponse.reason
+                            )
                         case 409:
-                            print("Update AAAA Records Error - " + createResponse.reason)
+                            print(
+                                "Update AAAA Records Error - " + createResponse.reason
+                            )
                         case 422:
                             print("Update AAAA Records Error - Unprocessable entity")
 
