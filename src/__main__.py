@@ -1,6 +1,6 @@
 import requests
 import ipaddress as ipaddress
-import json as json
+import yaml as yaml
 
 from typing import Optional
 
@@ -15,8 +15,8 @@ import providers
 import providers.hetzner
 from helper_functions import ipv6
 
-config_file = open("dns_config.json", "r")
-config = json.load(config_file)
+config_file = open("dns_config.yaml", "r")
+config = yaml.safe_load(config_file)
 config_file.close()
 
 global_config: globalConfig = globalConfig(
@@ -44,8 +44,6 @@ except requests.exceptions.ConnectTimeout:
 
 
 for provider in config["providers"]:
-    # TODO: add your own token & tld in json files
-
     ipv4_config: list[dnsV4Config] = []
     ipv6_config: list[dnsV6Config] = []
 
@@ -78,8 +76,6 @@ for provider in config["providers"]:
                 ),
             )
         )
-
-    # ipv6_config: list[dict[str, object]] = provider["ipv6"]["config"]
 
     provider_config = provider["provider_config"]
 

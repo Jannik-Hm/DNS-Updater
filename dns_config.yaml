@@ -1,0 +1,28 @@
+# Global Parameters
+global:
+  # TTL of created / updated records, should match your cron interval
+  ttl: 60
+
+  # Prefix ID of this device, will be subtracted to get the base delegated prefix
+  current_prefix_offset: '3'
+
+# List of different providers
+providers:
+- provider: hetzner
+  provider_config:
+    api_token: "<token>"
+  zones:
+  - name: "<tld>"
+    ipv4_records:
+    - name: "@"
+    - name: "*"
+    ipv6_records:
+    - name: sample1
+      prefixOffset: '82'
+      suffix: "::be24:11ff:fe23:fb1c"
+    - name: sample2
+      prefixOffset: '3'
+      suffix: "::6"
+    - name: sample3
+      prefixOffset: '4'
+      suffix: "::62"
