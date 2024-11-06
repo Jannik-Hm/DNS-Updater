@@ -33,6 +33,10 @@ global_config: globalConfig = globalConfig(
     ttl=config["global"]["ttl"], prefix_offset=config["global"]["current_prefix_offset"]
 )
 
+dryrun: bool = args.dryrun or config["global"]["dry-run"]
+disable_ipv4: bool = args.disable_ipv4 or config["global"]["disable-ipv4"]
+disable_ipv6: bool = args.disable_ipv6 or config["global"]["disable-ipv6"]
+
 ipv4Address: Optional[str] = None
 ipv6Address: Optional[str] = None
 ipv6Prefix: Optional[list[str]] = None
@@ -49,16 +53,16 @@ for logProvider in config["global"]["logging"]:
 
 logger = logging.Logger(logProviders=logProviders)
 
-if args.dryrun:
+if dryrun:
     logger.log(message="This is a dryrun. No Updates will be applied.", loglevel=logging.LogLevel.INFO)
-if not args.disable_ipv4:
+if not disable_ipv4:
     try:
         ipv4Address = requests.get("https://api.ipify.org", timeout=5).text
     except requests.exceptions.ConnectTimeout:
         logger.log(message="Timeout getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
     except requests.exceptions.ConnectionError:
         logger.log(message="Unable to establish connection getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
-if not args.disable_ipv6:
+if not disable_ipv6:
     try:
         ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
         if ipv6Address is not None:
@@ -120,6 +124,6 @@ if ipv4Address is not None or ipv6Address is not None:
                     dnsV6Config=ipv6_config,
                     ipv6Prefix=ipv6Prefix,
                     globalConfig=global_config,
-                    dryrun=args.dryrun,
+                    dryrun=dryrun,
                     logger=logger
                 )

@@ -6,6 +6,10 @@ global:
   # Prefix ID of this device, will be subtracted to get the base delegated prefix
   current_prefix_offset: '3'
 
+  dry-run: false
+  disable-ipv4: false
+  disable-ipv6: false
+
   logging:
   - provider: print
     loglevel: info
