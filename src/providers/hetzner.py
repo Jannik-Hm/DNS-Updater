@@ -129,28 +129,39 @@ def updateHetznerEntries(
                             record_exists: bool = dns_records_data[
                                 zone_id
                             ].__contains__("AAAA-" + record.name)
-                            ipv6Address: str = ipv6.calculateIPv6Address(
-                                prefix=ipv6Prefix,
-                                prefixOffset=record.prefixOffset,
-                                currentAddressOrFixedSuffix=(
-                                    record.suffix
-                                    or dns_records_data[zone_id][
-                                        "AAAA-" + record.name
-                                    ].value
-                                ),
-                            )
-                            if record_exists:
-                                if (
-                                    ipv6Address
-                                    != dns_records_data[zone_id][
-                                        "AAAA-" + record.name
-                                    ].value
-                                ):
-                                    updateRecordsBody.append(
+                            try:
+                                ipv6Address: str = ipv6.calculateIPv6Address(
+                                    prefix=ipv6Prefix,
+                                    prefixOffset=record.prefixOffset,
+                                    currentAddressOrFixedSuffix=(
+                                        record.suffix
+                                        or dns_records_data[zone_id][
+                                            "AAAA-" + record.name
+                                        ].value
+                                    ),
+                                )
+                                if record_exists:
+                                    if (
+                                        ipv6Address
+                                        != dns_records_data[zone_id][
+                                            "AAAA-" + record.name
+                                        ].value
+                                    ):
+                                        updateRecordsBody.append(
+                                            {
+                                                "id": dns_records_data[zone_id][
+                                                    "AAAA-" + record.name
+                                                ].id,
+                                                "zone_id": zone_id,
+                                                "type": "AAAA",
+                                                "name": record.name,
+                                                "value": ipv6Address,
+                                                "ttl": globalConfig.ttl,
+                                            }
+                                        )
+                                else:
+                                    createRecordsBody.append(
                                         {
-                                            "id": dns_records_data[zone_id][
-                                                "AAAA-" + record.name
-                                            ].id,
                                             "zone_id": zone_id,
                                             "type": "AAAA",
                                             "name": record.name,
@@ -158,16 +169,8 @@ def updateHetznerEntries(
                                             "ttl": globalConfig.ttl,
                                         }
                                     )
-                            else:
-                                createRecordsBody.append(
-                                    {
-                                        "zone_id": zone_id,
-                                        "type": "AAAA",
-                                        "name": record.name,
-                                        "value": ipv6Address,
-                                        "ttl": globalConfig.ttl,
-                                    }
-                                )
+                            except ValueError as e:
+                                logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
 
                 if dryrun:
                     logger.log(message="These Records would be updated:\n" + "```" + json.dumps(updateRecordsBody) + "```", loglevel=logging.LogLevel.INFO)

@@ -67,6 +67,8 @@ except requests.exceptions.ConnectTimeout:
     logger.log(message="Timeout getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
 except requests.exceptions.ConnectionError:
     logger.log(message="Unable to establish connection getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
+except ValueError as e:
+    logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
 
 if ipv4Address is not None or ipv6Address is not None:
     for provider in config["providers"]:
