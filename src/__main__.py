@@ -14,16 +14,13 @@ from global_objects import (
 )
 import providers
 import providers.hetzner
-from helper_functions import ipv6
+from helper_functions import ipv6, logging
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-d", "--dryrun", action='store_true', dest="dryrun")
 
 args = parser.parse_args()
-
-if args.dryrun:
-    print("This is a dryrun. No Updates will be applied.")
 
 config_file = open("dns_config.yaml", "r")
 config = yaml.safe_load(config_file)
@@ -37,12 +34,27 @@ ipv4Address: Optional[str] = None
 ipv6Address: Optional[str] = None
 ipv6Prefix: Optional[list[str]] = None
 
+logProviders: list[logging.LogProvider] = []
+
+for logProvider in config["global"]["logging"]:
+    loglevel: logging.LogLevel = logging.LogLevel.fromString(logProvider["loglevel"])
+    match str.lower(logProvider["provider"]):
+        case "print":
+            logProviders.append(logging.PrintLogger(loglevel=loglevel))
+        case "discord":
+            logProviders.append(logging.DiscordLogger(webhook_url=logProvider["provider_config"]["webhook_url"],loglevel=loglevel))
+
+logger = logging.Logger(logProviders=logProviders)
+
+if args.dryrun:
+    logger.log(message="This is a dryrun. No Updates will be applied.", loglevel=logging.LogLevel.INFO)
+
 try:
     ipv4Address = requests.get("https://api.ipify.org", timeout=5).text
 except requests.exceptions.ConnectTimeout:
-    print("Timeout")  # TODO: perform Logging of timeout
+    logger.log(message="Timeout getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
 except requests.exceptions.ConnectionError:
-    print("Unable to establish connection")
+    logger.log(message="Unable to establish connection getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
 try:
     ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
     if ipv6Address is not None:
@@ -52,9 +64,9 @@ try:
             currentAddressOrFixedSuffix="::",
         ).split(":")
 except requests.exceptions.ConnectTimeout:
-    print("Timeout")  # TODO: perform Logging of timeout
+    logger.log(message="Timeout getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
 except requests.exceptions.ConnectionError:
-    print("Unable to establish connection")
+    logger.log(message="Unable to establish connection getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
 
 if ipv4Address is not None or ipv6Address is not None:
     for provider in config["providers"]:
@@ -102,5 +114,6 @@ if ipv4Address is not None or ipv6Address is not None:
                     dnsV6Config=ipv6_config,
                     ipv6Prefix=ipv6Prefix,
                     globalConfig=global_config,
-                    dryrun=args.dryrun
+                    dryrun=args.dryrun,
+                    logger=logger
                 )

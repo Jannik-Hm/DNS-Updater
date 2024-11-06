@@ -6,6 +6,14 @@ global:
   # Prefix ID of this device, will be subtracted to get the base delegated prefix
   current_prefix_offset: '3'
 
+  logging:
+  - provider: print
+    loglevel: info
+  - provider: discord
+    loglevel: info
+    provider_config:
+      webhook_url: "<webhook_url>"
+
 # List of different providers
 providers:
 - provider: hetzner

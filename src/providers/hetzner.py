@@ -6,7 +6,7 @@ from global_objects import (
     dnsV6Config,
     globalConfig,
 )
-from helper_functions import ipv6
+from helper_functions import ipv6, logging
 import json as json
 
 
@@ -15,13 +15,13 @@ def updateHetznerEntries(
     dnsV4Config: list[dnsV4Config],
     dnsV6Config: list[dnsV6Config],
     globalConfig: globalConfig,
+    logger: logging.Logger,
     ipv4Address: str | None = None,
     ipv6Prefix: list[str] | None = None,
     dryrun: bool | None = None,
 ) -> None:
     hetzner_api_token: str = providerConfig["api_token"]
 
-    # TODO: log errors instead of just printing
     try:
         getZones = requests.get(
             url="https://dns.hetzner.com/api/v1/zones",
@@ -36,13 +36,13 @@ def updateHetznerEntries(
         if getZones.status_code != 200:
             match getZones.status_code:
                 case 400:
-                    print("Get Zones - Pagination selectors are mutually exclusive")
+                    logger.log(message="Get Hetzner Zones - Pagination selectors are mutually exclusive", loglevel=logging.LogLevel.FATAL)
                     return
                 case 401:
-                    print("Get Zones - " + getZones.reason)
+                    logger.log(message="Get Hetzner Zones - " + getZones.reason, loglevel=logging.LogLevel.FATAL)
                     return
                 case 406:
-                    print("Get Zones - " + getZones.reason)
+                    logger.log(message="Get Hetzner Zones - " + getZones.reason, loglevel=logging.LogLevel.FATAL)
                     return
         else:
             for entry in getZones.json()["zones"]:
@@ -60,10 +60,10 @@ def updateHetznerEntries(
             if getRecords.status_code != 200:
                 match getRecords.status_code:
                     case 401:
-                        print("Get Records - " + getRecords.reason)
+                        logger.log(message="Get Hetzner Records - " + getRecords.reason, loglevel=logging.LogLevel.FATAL)
                         return
                     case 406:
-                        print("Get Records - " + getRecords.reason)
+                        logger.log(message="Get Hetzner Records - " + getRecords.reason, loglevel=logging.LogLevel.FATAL)
                         return
             else:
                 for entry in getRecords.json()["records"]:
@@ -170,10 +170,7 @@ def updateHetznerEntries(
                                 )
 
                 if dryrun:
-                    print()
-                    print("These Records would be updated:")
-                    print(json.dumps(updateRecordsBody))
-                    print()
+                    logger.log(message="These Records would be updated:\n" + "```" + json.dumps(updateRecordsBody) + "```", loglevel=logging.LogLevel.INFO)
                 elif updateRecordsBody.__len__() > 0:
                     updateResponse = requests.put(
                         url="https://dns.hetzner.com/api/v1/records/bulk",
@@ -188,25 +185,16 @@ def updateHetznerEntries(
                     if updateResponse.status_code != 200:
                         match updateResponse.status_code:
                             case 401:
-                                print(
-                                    "Update A Records Error - " + updateResponse.reason
-                                )
+                                logger.log(message="Update A Records Error - " + updateResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 403:
-                                print(
-                                    "Update A Records Error - " + updateResponse.reason
-                                )
+                                logger.log(message="Update A Records Error - " + updateResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 406:
-                                print(
-                                    "Update A Records Error - " + updateResponse.reason
-                                )
+                                logger.log(message="Update A Records Error - " + updateResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 422:
-                                print("Update A Records Error - Unprocessable entity")
+                                logger.log(message="Update A Records Error - Unprocessable entity", loglevel=logging.LogLevel.FATAL)
 
                 if dryrun:
-                    print()
-                    print("These Records would be created:")
-                    print(json.dumps(createRecordsBody))
-                    print()
+                    logger.log(message="These Records would be created:\n" + "```" + json.dumps(createRecordsBody) + "```", loglevel=logging.LogLevel.INFO)
                 elif createRecordsBody.__len__() > 0:
                     createResponse = requests.post(
                         url="https://dns.hetzner.com/api/v1/records/bulk",
@@ -221,38 +209,20 @@ def updateHetznerEntries(
                     if createResponse.status_code != 200:
                         match createResponse.status_code:
                             case 401:
-                                print(
-                                    "Update AAAA Records Error - "
-                                    + createResponse.reason
-                                )
+                                logger.log(message="Update AAAA Records Error - " + createResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 403:
-                                print(
-                                    "Update AAAA Records Error - "
-                                    + createResponse.reason
-                                )
+                                logger.log(message="Update AAAA Records Error - " + createResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 404:
-                                print(
-                                    "Update AAAA Records Error - "
-                                    + createResponse.reason
-                                )
+                                logger.log(message="Update AAAA Records Error - " + createResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 406:
-                                print(
-                                    "Update AAAA Records Error - "
-                                    + createResponse.reason
-                                )
+                                logger.log(message="Update AAAA Records Error - " + createResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 409:
-                                print(
-                                    "Update AAAA Records Error - "
-                                    + createResponse.reason
-                                )
+                                logger.log(message="Update AAAA Records Error - " + createResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 422:
-                                print(
-                                    "Update AAAA Records Error - Unprocessable entity"
-                                )
-    except requests.exceptions.Timeout:
-        print("Get Zones - Timeout")
-    except requests.exceptions.ConnectionError:
-        print("Unable to establish connection")
-    # zone_ids: List[str] = zones.json()["zones"]
+                                logger.log(message="Update AAAA Records Error - Unprocessable entity", loglevel=logging.LogLevel.FATAL)
+    except requests.exceptions.Timeout as e:
+        logger.log(message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ""}", loglevel=logging.LogLevel.FATAL)
+    except requests.exceptions.ConnectionError as e:
+        logger.log(message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ""}", loglevel=logging.LogLevel.FATAL)
 
     return
