@@ -20,6 +20,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-d", "--dryrun", action='store_true', dest="dryrun", help="perform a dry run, printing changes without executing")
 parser.add_argument("-f", "--config-file", dest="config_path", default="dns_config.yaml", help="specify the path to the config file")
+parser.add_argument("--disable-ipv4", dest="disable_ipv4", action='store_true', help="disable ipv4 updates")
+parser.add_argument("--disable-ipv6", dest="disable_ipv6", action='store_true', help="disable ipv6 updates")
 
 args = parser.parse_args()
 
@@ -49,27 +51,28 @@ logger = logging.Logger(logProviders=logProviders)
 
 if args.dryrun:
     logger.log(message="This is a dryrun. No Updates will be applied.", loglevel=logging.LogLevel.INFO)
-
-try:
-    ipv4Address = requests.get("https://api.ipify.org", timeout=5).text
-except requests.exceptions.ConnectTimeout:
-    logger.log(message="Timeout getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
-except requests.exceptions.ConnectionError:
-    logger.log(message="Unable to establish connection getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
-try:
-    ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
-    if ipv6Address is not None:
-        ipv6Prefix = ipv6.calculateIPv6Address(
-            prefix=ipaddress.IPv6Address(ipv6Address).exploded.split(":"),
-            prefixOffset="-" + str(global_config.prefix_offset), # negative Offset
-            currentAddressOrFixedSuffix="::",
-        ).split(":")
-except requests.exceptions.ConnectTimeout:
-    logger.log(message="Timeout getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
-except requests.exceptions.ConnectionError:
-    logger.log(message="Unable to establish connection getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
-except ValueError as e:
-    logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
+if not args.disable_ipv4:
+    try:
+        ipv4Address = requests.get("https://api.ipify.org", timeout=5).text
+    except requests.exceptions.ConnectTimeout:
+        logger.log(message="Timeout getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
+    except requests.exceptions.ConnectionError:
+        logger.log(message="Unable to establish connection getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
+if not args.disable_ipv6:
+    try:
+        ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
+        if ipv6Address is not None:
+            ipv6Prefix = ipv6.calculateIPv6Address(
+                prefix=ipaddress.IPv6Address(ipv6Address).exploded.split(":"),
+                prefixOffset="-" + str(global_config.prefix_offset), # negative Offset
+                currentAddressOrFixedSuffix="::",
+            ).split(":")
+    except requests.exceptions.ConnectTimeout:
+        logger.log(message="Timeout getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
+    except requests.exceptions.ConnectionError:
+        logger.log(message="Unable to establish connection getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
+    except ValueError as e:
+        logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
 
 if ipv4Address is not None or ipv6Address is not None:
     for provider in config["providers"]:
