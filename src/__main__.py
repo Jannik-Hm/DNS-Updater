@@ -18,11 +18,12 @@ from helper_functions import ipv6, logging
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-d", "--dryrun", action='store_true', dest="dryrun")
+parser.add_argument("-d", "--dryrun", action='store_true', dest="dryrun", help="perform a dry run, printing changes without executing")
+parser.add_argument("-f", "--config-file", dest="config_path", default="dns_config.yaml", help="specify the path to the config file")
 
 args = parser.parse_args()
 
-config_file = open("dns_config.yaml", "r")
+config_file = open(args.config_path, "r")
 config = yaml.safe_load(config_file)
 config_file.close()
 
