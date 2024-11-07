@@ -6,8 +6,9 @@ A python script to update Hetzner DNS records automatically
 ## Dependencies
 - requests
 - pyyaml
+- discord-webhook
   
-Install with `pip3 install requests pyyaml`
+Install with `pip3 install requests pyyaml discord-webhook`
 
 ## Development / Contribution
 This script is targeted to be expanded with other providers. <br>
