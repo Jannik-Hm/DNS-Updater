@@ -195,6 +195,8 @@ def updateHetznerEntries(
                                 logger.log(message="Update A Records Error - " + updateResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 422:
                                 logger.log(message="Update A Records Error - Unprocessable entity", loglevel=logging.LogLevel.FATAL)
+                    else:
+                        logger.log(message="These Records were updated:\n" + "```" + json.dumps(updateResponse.json()["records"]) + "```", loglevel=logging.LogLevel.INFO)
 
                 if dryrun:
                     logger.log(message="These Records would be created:\n" + "```" + json.dumps(createRecordsBody) + "```", loglevel=logging.LogLevel.INFO)
@@ -223,9 +225,11 @@ def updateHetznerEntries(
                                 logger.log(message="Update AAAA Records Error - " + createResponse.reason, loglevel=logging.LogLevel.FATAL)
                             case 422:
                                 logger.log(message="Update AAAA Records Error - Unprocessable entity", loglevel=logging.LogLevel.FATAL)
+                    else:
+                        logger.log(message="These Records were created:\n" + "```" + json.dumps(createResponse.json()["records"]) + "```", loglevel=logging.LogLevel.INFO)
     except requests.exceptions.Timeout as e:
-        logger.log(message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ""}", loglevel=logging.LogLevel.FATAL)
+        logger.log(message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ''}", loglevel=logging.LogLevel.FATAL)
     except requests.exceptions.ConnectionError as e:
-        logger.log(message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ""}", loglevel=logging.LogLevel.FATAL)
+        logger.log(message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ''}", loglevel=logging.LogLevel.FATAL)
 
     return
