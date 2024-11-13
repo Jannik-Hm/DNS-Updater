@@ -28,7 +28,7 @@ def updateHetznerEntries(
             headers={
                 "Auth-API-Token": hetzner_api_token,
             },
-            timeout=5,
+            timeout=10,
         )
         dns_records_data: dict[str, dict[str, Record]] = {}
         zone_id_map: dict[str, str] = {}
