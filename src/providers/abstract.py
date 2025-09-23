@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from typing import Any
+import aiohttp
 
 from global_objects.config import ProviderConfig, GlobalConfig
 from helper_functions import logging
@@ -119,4 +120,19 @@ class Provider(ABC):
 
     @abstractmethod
     def updateDNSConfig(self):
+        pass
+
+class AsyncProvider(Provider):
+    aioSession: aiohttp.ClientSession
+
+    def __init__(self, providerConfig: ProviderConfig[Any], globalConfig: GlobalConfig, logger: logging.Logger, aioSession: aiohttp.ClientSession):
+        self.aioSession = aioSession
+        super().__init__(providerConfig, globalConfig, logger)
+
+    @abstractmethod
+    async def getCurrentDNSConfig(self):
+        pass
+
+    @abstractmethod
+    async def updateDNSConfig(self):
         pass
