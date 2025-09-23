@@ -6,7 +6,7 @@ import aiohttp
 import asyncio
 
 from helper_functions import logging
-from global_objects.config import ProviderConfig
+from config.config_models import ProviderConfig
 from providers import AsyncProvider
 
 from .api_pydantic_models import *

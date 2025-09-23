@@ -5,7 +5,7 @@ from typing import Any
 import requests
 
 from helper_functions import logging
-from global_objects.config import GlobalConfig, ProviderConfig
+from config.config_models import GlobalConfig, ProviderConfig
 from providers import Provider
 
 from .api_pydantic_models import *

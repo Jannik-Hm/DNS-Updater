@@ -3,9 +3,9 @@ from pydantic import BaseModel
 from typing import Any
 import aiohttp
 
-from global_objects.config import ProviderConfig, GlobalConfig
+from config.config_models import ProviderConfig, GlobalConfig
 from helper_functions import logging
-from helper_functions.ipv6 import calculateIPv6Address
+from ip_fetching import calculateIPv6Address
 
 #TODO: allow consecutive fails (for timeout cases)
 
