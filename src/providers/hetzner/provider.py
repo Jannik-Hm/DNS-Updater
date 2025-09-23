@@ -58,7 +58,7 @@ class HetznerProvider(Provider):
                         )
                         return
             try:
-                zones: HetznerZones = HetznerZones.model_validate_json(getZones.json())
+                zones: HetznerZones = HetznerZones.model_validate(getZones.json())
                 for entry in zones.zones:
                     self.zone_records[entry.id] = {}
                     self.zone_ids[entry.name] = entry.id
@@ -91,7 +91,7 @@ class HetznerProvider(Provider):
                         )
                         return
             try:
-                records: HetznerRecords = HetznerRecords.model_validate_json(
+                records: HetznerRecords = HetznerRecords.model_validate(
                     getRecords.json()
                 )
                 for entry in records.records:
@@ -114,6 +114,8 @@ class HetznerProvider(Provider):
             )
 
     def createDNSRecord(self, type: str, name: str, value: str, zoneName: str):
+        if not self.zone_ids[zoneName] in self.created_zone_records:
+            self.created_zone_records[self.zone_ids[zoneName]] = {}
         self.created_zone_records[self.zone_ids[zoneName]][f"{type}-{name}"] = (
             HetznerRecord(
                 ttl=60,
@@ -138,7 +140,7 @@ class HetznerProvider(Provider):
                 logger.log(
                     message="These Records would be updated:\n"
                     + "```"
-                    + json.dumps(updated_zone_records)
+                    + json.dumps([record.model_dump() for record in updated_zone_records])
                     + "```",
                     loglevel=logging.LogLevel.INFO,
                 )
@@ -149,7 +151,7 @@ class HetznerProvider(Provider):
                         "Content-Type": "application/json",
                         "Auth-API-Token": api_token,
                     },
-                    data=json.dumps({"records": updated_zone_records}),
+                    data=json.dumps({"records": [record.model_dump() for record in updated_zone_records]}),
                     timeout=10,
                 )
 
@@ -196,7 +198,7 @@ class HetznerProvider(Provider):
                 logger.log(
                     message="These Records would be created:\n"
                     + "```"
-                    + json.dumps(created_zone_records)
+                    + json.dumps([record.model_dump() for record in created_zone_records])
                     + "```",
                     loglevel=logging.LogLevel.INFO,
                 )
@@ -207,7 +209,7 @@ class HetznerProvider(Provider):
                         "Content-Type": "application/json",
                         "Auth-API-Token": api_token,
                     },
-                    data=json.dumps({"records": created_zone_records}),
+                    data=json.dumps({"records": [record.model_dump() for record in created_zone_records]}),
                     timeout=10,
                 )
 

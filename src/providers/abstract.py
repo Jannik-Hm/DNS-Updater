@@ -7,7 +7,7 @@ from helper_functions.ipv6 import calculateIPv6Address
 #TODO: allow consecutive fails (for timeout cases)
 
 class Record(BaseModel):
-    ttl: int
+    ttl: int | None = None
     name: str
     value: str
     type: str
@@ -40,10 +40,10 @@ class Provider(ABC):
         )
 
     def updateDNSRecordsLocally(
-        self, globalConfig: GlobalConfig, currentIPv4: str, currentIPv6Prefix: list[str]
+        self, globalConfig: GlobalConfig, currentIPv4: str | None, currentIPv6Prefix: list[str] | None
     ):
         for zone in self.config.zones:
-            if not globalConfig.disable_v4:
+            if not globalConfig.disable_v4 and currentIPv4:
                 for record in zone.ipv4_records:
                     if (
                         f"AAAA-{record.name}"
@@ -57,6 +57,8 @@ class Provider(ABC):
                             continue
 
                         temp_record.value = currentIPv4
+                        if not self.zone_ids[zone.name] in self.updated_zone_records:
+                            self.updated_zone_records[self.zone_ids[zone.name]] = {}
                         self.updated_zone_records[self.zone_ids[zone.name]][
                             f"A-{record.name}"
                         ] = temp_record
@@ -67,7 +69,7 @@ class Provider(ABC):
                             value=currentIPv4,
                             zoneName=zone.name,
                         )
-            if not globalConfig.disable_v6:
+            if not globalConfig.disable_v6 and currentIPv6Prefix:
                 for record in zone.ipv6_records:
                     if (
                         f"AAAA-{record.name}"
@@ -92,6 +94,8 @@ class Provider(ABC):
                             continue
 
                         temp_record.value = ipv6_value
+                        if not self.zone_ids[zone.name] in self.updated_zone_records:
+                            self.updated_zone_records[self.zone_ids[zone.name]] = {}
                         self.updated_zone_records[self.zone_ids[zone.name]][
                             f"AAAA-{record.name}"
                         ] = temp_record
