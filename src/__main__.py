@@ -77,15 +77,9 @@ if not disable_ipv6:
         logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
 
 if ipv4Address is not None or ipv6Address is not None:
-    for provider in config.providers:
+    for providerConfig in config.providers:
+        provider: providers.Provider = providers.ProviderMapping[providerConfig.provider.upper()].value(providerConfig=providerConfig, globalConfig=config.global_, logger=logger)
 
-        match provider.provider:
-            case "hetzner":
-
-                provider = providers.HetznerProvider(providerConfig=provider, globalConfig=config.global_, logger=logger)
-
-                provider.getCurrentDNSConfig()
-
-                provider.updateDNSRecordsLocally(currentIPv4=ipv4Address, currentIPv6Prefix=ipv6Address.split(":") if ipv6Address else None)
-
-                provider.updateDNSConfig()
+        provider.getCurrentDNSConfig()
+        provider.updateDNSRecordsLocally(currentIPv4=ipv4Address, currentIPv6Prefix=ipv6Address.split(":") if ipv6Address else None)
+        provider.updateDNSConfig()
