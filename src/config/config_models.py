@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Any, TypeVar, Generic
 
 ProviderConfigConfig = TypeVar('ProviderConfigConfig')
@@ -10,12 +10,18 @@ class LoggingConfig(BaseModel):
 
 class GlobalConfig(BaseModel):
   cron: str = "*/1 * * * *"
-  ttl: int
-  current_prefix_offset: str #hexadecimal
-  dry_run: bool = Field(..., alias="dry-run")
-  disable_v4: bool = Field(..., alias="disable-ipv4")
-  disable_v6: bool = Field(..., alias="disable-ipv6")
+  ttl: int = 60
+  current_prefix_offset: str | None = None # hexadecimal, only required when ipv6 is enabled
+  dry_run: bool = Field(False, alias="dry-run") # no dry run by default
+  disable_v4: bool = Field(False, alias="disable-ipv4") # enable ipv4 by default
+  disable_v6: bool = Field(True, alias="disable-ipv6") # disable ipv6 by default
   logging: list[LoggingConfig]
+
+  @model_validator(mode="after")
+  def check_ipv6_requirement(self):
+      if not self.disable_v6 and self.current_prefix_offset is None:
+          raise ValueError("`current_prefix_offset` is required when IPv6 is enabled (disable-ipv6 == False)")
+      return self
 
 class RecordConfigV4(BaseModel):
   name: str
