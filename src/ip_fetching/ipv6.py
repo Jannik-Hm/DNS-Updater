@@ -1,0 +1,39 @@
+import requests
+import ipaddress as ipaddress
+
+from config import Config
+from helper_functions import logging
+
+
+def calculateIPv6Address(prefix: list[str], prefixOffset: str, currentAddressOrFixedSuffix: str) -> str:
+  prefix_int = int("".join(prefix[:4]), 16)
+  prefix_id_int = int(prefixOffset, 10)
+  if f"{(prefix_int + prefix_id_int):016x}".__len__() > 16:
+    raise ValueError(f"The generated prefix for base prefix {':'.join(prefix[:4])} and prefixOffset {prefixOffset} is overflowing. Please check your config.")
+  new_prefix = f"{(prefix_int + prefix_id_int) & 0xFFFFFFFFFFFFFFFF:016x}"
+  return ipaddress.IPv6Address(":".join(new_prefix[i:i+4] for i in range(0, len(new_prefix), 4)) + ":" + ":".join(ipaddress.IPv6Address(currentAddressOrFixedSuffix).exploded.split(sep=":")[-4:])).compressed
+
+
+def getCurrentIPv6Prefix(config: Config, logger: logging.Logger) -> list[str] | None:
+    try:
+        ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
+        if ipv6Address is not None:
+            ipv6Prefix = calculateIPv6Address(
+                prefix=ipaddress.IPv6Address(ipv6Address).exploded.split(":"),
+                prefixOffset="-"
+                + str(config.global_.current_prefix_offset),  # negative Offset
+                currentAddressOrFixedSuffix="::",
+            ).split(":")
+            return ipv6Prefix
+    except requests.exceptions.ConnectTimeout:
+        logger.log(
+            message="Timeout getting current IPv6 Address",
+            loglevel=logging.LogLevel.FATAL,
+        )
+    except requests.exceptions.ConnectionError:
+        logger.log(
+            message="Unable to establish connection getting current IPv6 Address",
+            loglevel=logging.LogLevel.FATAL,
+        )
+    except ValueError as e:
+        logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
