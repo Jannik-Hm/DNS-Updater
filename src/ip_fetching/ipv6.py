@@ -15,6 +15,7 @@ def calculateIPv6Address(prefix: list[str], prefixOffset: str, currentAddressOrF
 
 
 def getCurrentIPv6Prefix(config: Config, logger: logging.Logger) -> list[str] | None:
+    logger.log("Getting current IPv6 Address", loglevel=logging.LogLevel.DEBUG)
     try:
         ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
         if ipv6Address is not None:

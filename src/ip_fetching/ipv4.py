@@ -3,7 +3,7 @@ import requests
 from helper_functions import logging
 
 def getCurrentIPv4Address(logger: logging.Logger) -> str | None:
-    logger.log("Getting current IPv4 Address", loglevel=logging.LogLevel.INFO)
+    logger.log("Getting current IPv4 Address", loglevel=logging.LogLevel.DEBUG)
     try:
         ipv4Address = requests.get("https://api.ipify.org", timeout=5).text
         return ipv4Address
