@@ -78,7 +78,7 @@ if not disable_ipv6:
 
 if ipv4Address is not None or ipv6Address is not None:
     for providerConfig in config.providers:
-        provider: providers.Provider = providers.ProviderMapping[providerConfig.provider.upper()].value(providerConfig=providerConfig, globalConfig=config.global_, logger=logger)
+        provider: providers.Provider = providers.providerMap[providerConfig.provider.upper()](providerConfig=providerConfig, globalConfig=config.global_, logger=logger)
 
         provider.getCurrentDNSConfig()
         provider.updateDNSRecordsLocally(currentIPv4=ipv4Address, currentIPv6Prefix=ipv6Address.split(":") if ipv6Address else None)
