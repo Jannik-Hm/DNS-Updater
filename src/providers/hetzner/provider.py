@@ -24,8 +24,10 @@ class HetznerProvider(Provider):
     def validateConfig(self, config: ProviderConfig[Any]) -> ProviderConfig[Any]:
         return ProviderConfig[HetznerProviderConfigConfig].model_validate(config)
 
-    def getCurrentDNSConfig(self, globalConfig: GlobalConfig, logger: logging.Logger):
+    def getCurrentDNSConfig(self):
         api_token: str = self.config.provider_config.api_token
+        logger = self.logger
+        globalConfig = self.globalConfig
 
         try:
 
@@ -126,8 +128,10 @@ class HetznerProvider(Provider):
             )
         )
 
-    def updateDNSConfig(self, globalConfig: GlobalConfig, logger: logging.Logger):
+    def updateDNSConfig(self):
         api_token: str = self.config.provider_config.api_token
+        logger = self.logger
+        globalConfig = self.globalConfig
 
         try:
 

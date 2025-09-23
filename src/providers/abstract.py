@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
-from global_objects.config import ProviderConfig, GlobalConfig
 from typing import Any
+
+from global_objects.config import ProviderConfig, GlobalConfig
+from helper_functions import logging
 from helper_functions.ipv6 import calculateIPv6Address
 
 #TODO: allow consecutive fails (for timeout cases)
@@ -15,6 +17,8 @@ class Record(BaseModel):
 
 class Provider(ABC):
     config: ProviderConfig[Any]
+    globalConfig: GlobalConfig
+    logger: logging.Logger
     zone_records: dict[str, dict[str, Record]] = (
         {}
     )  # dict[zone_id, dict[type-record_name, Record]]
@@ -22,8 +26,10 @@ class Provider(ABC):
     updated_zone_records: dict[str, dict[str, Record]] = {}
     created_zone_records: dict[str, dict[str, Record]] = {}
 
-    def __init__(self, providerConfig: ProviderConfig[Any]):
+    def __init__(self, providerConfig: ProviderConfig[Any], globalConfig: GlobalConfig, logger: logging.Logger):
         self.config = self.validateConfig(providerConfig)
+        self.globalConfig = globalConfig
+        self.logger = logger
 
     @abstractmethod
     def validateConfig(self, config: ProviderConfig[Any]) -> ProviderConfig[Any]:
@@ -31,7 +37,7 @@ class Provider(ABC):
         # call ProviderConfig[Specific Config Config].model_validate(self.config)
 
     @abstractmethod
-    def getCurrentDNSConfig(self, globalConfig: GlobalConfig):
+    def getCurrentDNSConfig(self):
         pass
 
     def createDNSRecord(self, type: str, name: str, value: str, zoneName: str):
@@ -40,10 +46,10 @@ class Provider(ABC):
         )
 
     def updateDNSRecordsLocally(
-        self, globalConfig: GlobalConfig, currentIPv4: str | None, currentIPv6Prefix: list[str] | None
+        self, currentIPv4: str | None, currentIPv6Prefix: list[str] | None
     ):
         for zone in self.config.zones:
-            if not globalConfig.disable_v4 and currentIPv4:
+            if not self.globalConfig.disable_v4 and currentIPv4:
                 for record in zone.ipv4_records:
                     if (
                         f"AAAA-{record.name}"
@@ -69,7 +75,7 @@ class Provider(ABC):
                             value=currentIPv4,
                             zoneName=zone.name,
                         )
-            if not globalConfig.disable_v6 and currentIPv6Prefix:
+            if not self.globalConfig.disable_v6 and currentIPv6Prefix:
                 for record in zone.ipv6_records:
                     if (
                         f"AAAA-{record.name}"
@@ -112,5 +118,5 @@ class Provider(ABC):
                         )
 
     @abstractmethod
-    def updateDNSConfig(self, globalConfig: GlobalConfig):
+    def updateDNSConfig(self):
         pass
