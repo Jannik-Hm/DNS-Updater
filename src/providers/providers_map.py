@@ -1,8 +1,8 @@
 from typing import Type
 
-from .abstract import Provider
-from .hetzner import HetznerProvider
+from .abstract import Provider, AsyncProvider
+from .hetzner import HetznerProvider, AsyncHetznerProvider
 
-providerMap: dict[str, Type[Provider]] = {
-    "HETZNER": HetznerProvider,
+providerMap: dict[str, Type[AsyncProvider]] = {
+    "HETZNER": AsyncHetznerProvider,
 }

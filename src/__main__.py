@@ -3,19 +3,44 @@ import ipaddress as ipaddress
 import yaml as yaml
 import argparse
 
+import asyncio
+import aiohttp
+
 from typing import Optional
 
 import providers
 from helper_functions import ipv6, logging
 
-from global_objects.config import Config
+from global_objects.config import Config, ProviderConfig
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-d", "--dryrun", action='store_true', dest="dryrun", help="perform a dry run, printing changes without executing")
-parser.add_argument("-f", "--config-file", dest="config_path", default="dns_config.yaml", help="specify the path to the config file")
-parser.add_argument("--disable-ipv4", dest="disable_ipv4", action='store_true', help="disable ipv4 updates")
-parser.add_argument("--disable-ipv6", dest="disable_ipv6", action='store_true', help="disable ipv6 updates")
+parser.add_argument(
+    "-d",
+    "--dryrun",
+    action="store_true",
+    dest="dryrun",
+    help="perform a dry run, printing changes without executing",
+)
+parser.add_argument(
+    "-f",
+    "--config-file",
+    dest="config_path",
+    default="dns_config.yaml",
+    help="specify the path to the config file",
+)
+parser.add_argument(
+    "--disable-ipv4",
+    dest="disable_ipv4",
+    action="store_true",
+    help="disable ipv4 updates",
+)
+parser.add_argument(
+    "--disable-ipv6",
+    dest="disable_ipv6",
+    action="store_true",
+    help="disable ipv6 updates",
+)
 
 args = parser.parse_args()
 
@@ -47,39 +72,90 @@ for logProvider in config.global_.logging:
         case "discord":
             if logProvider.provider_config is not None:
                 # TODO: validate discord logger config
-                logProviders.append(logging.DiscordLogger(webhook_url=logProvider.provider_config["webhook_url"],loglevel=loglevel))
+                logProviders.append(
+                    logging.DiscordLogger(
+                        webhook_url=logProvider.provider_config["webhook_url"],
+                        loglevel=loglevel,
+                    )
+                )
 
 logger = logging.Logger(logProviders=logProviders)
 
 if dryrun:
-    logger.log(message="This is a dryrun. No Updates will be applied.", loglevel=logging.LogLevel.INFO)
+    logger.log(
+        message="This is a dryrun. No Updates will be applied.",
+        loglevel=logging.LogLevel.INFO,
+    )
 if not disable_ipv4:
     try:
         ipv4Address = requests.get("https://api.ipify.org", timeout=5).text
     except requests.exceptions.ConnectTimeout:
-        logger.log(message="Timeout getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
+        logger.log(
+            message="Timeout getting current IPv4 Address",
+            loglevel=logging.LogLevel.FATAL,
+        )
     except requests.exceptions.ConnectionError:
-        logger.log(message="Unable to establish connection getting current IPv4 Address", loglevel=logging.LogLevel.FATAL)
+        logger.log(
+            message="Unable to establish connection getting current IPv4 Address",
+            loglevel=logging.LogLevel.FATAL,
+        )
 if not disable_ipv6:
     try:
         ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
         if ipv6Address is not None:
             ipv6Prefix = ipv6.calculateIPv6Address(
                 prefix=ipaddress.IPv6Address(ipv6Address).exploded.split(":"),
-                prefixOffset="-" + str(config.global_.current_prefix_offset), # negative Offset
+                prefixOffset="-"
+                + str(config.global_.current_prefix_offset),  # negative Offset
                 currentAddressOrFixedSuffix="::",
             ).split(":")
     except requests.exceptions.ConnectTimeout:
-        logger.log(message="Timeout getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
+        logger.log(
+            message="Timeout getting current IPv6 Address",
+            loglevel=logging.LogLevel.FATAL,
+        )
     except requests.exceptions.ConnectionError:
-        logger.log(message="Unable to establish connection getting current IPv6 Address", loglevel=logging.LogLevel.FATAL)
+        logger.log(
+            message="Unable to establish connection getting current IPv6 Address",
+            loglevel=logging.LogLevel.FATAL,
+        )
     except ValueError as e:
         logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
 
-if ipv4Address is not None or ipv6Address is not None:
-    for providerConfig in config.providers:
-        provider: providers.Provider = providers.providerMap[providerConfig.provider.upper()](providerConfig=providerConfig, globalConfig=config.global_, logger=logger)
 
-        provider.getCurrentDNSConfig()
-        provider.updateDNSRecordsLocally(currentIPv4=ipv4Address, currentIPv6Prefix=ipv6Address.split(":") if ipv6Address else None)
-        provider.updateDNSConfig()
+async def providerFetchAndUpdate(
+    ipv4Address: str | None, ipv6Address: str | None, providerConfig: ProviderConfig
+):
+    async with aiohttp.ClientSession() as session:
+        provider: providers.AsyncProvider = providers.providerMap[
+            providerConfig.provider.upper()
+        ](
+            providerConfig=providerConfig,
+            globalConfig=config.global_,
+            logger=logger,
+            aioSession=session,
+        )
+
+        await provider.getCurrentDNSConfig()
+        provider.updateDNSRecordsLocally(
+            currentIPv4=ipv4Address,
+            currentIPv6Prefix=ipv6Address.split(":") if ipv6Address else None,
+        )
+        await provider.updateDNSConfig()
+
+
+async def main():
+    if ipv4Address is not None or ipv6Address is not None:
+        # schedule all providers in parallel as tasks
+        tasks = [
+            providerFetchAndUpdate(
+                ipv4Address=ipv4Address,
+                ipv6Address=ipv6Address,
+                providerConfig=providerConfig,
+            )
+            for providerConfig in config.providers
+        ]
+        # wait for all to complete (gather returns their results or raises if one fails)
+        await asyncio.gather(*tasks, return_exceptions=False)
+
+asyncio.run(main())
