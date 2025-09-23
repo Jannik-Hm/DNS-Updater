@@ -1,0 +1,88 @@
+import ipaddress as ipaddress
+import yaml as yaml
+
+import asyncio
+import signal
+import aiocron
+
+import providers
+from helper_functions import logging
+
+from config import Config, load_config
+
+# TODO: load this from an env var
+config_location = "dns_config.yaml"
+
+print("[INFO]: Loading Config from file")
+
+config: Config = load_config(config_location)
+
+# TODO: switch to logging lib?
+
+logProviders: list[logging.LogProvider] = []
+
+for logProvider in config.global_.logging:
+    loglevel: logging.LogLevel = logging.LogLevel.fromString(logProvider.loglevel)
+    match str.lower(logProvider.provider):
+        case "print":
+            logProviders.append(logging.PrintLogger(loglevel=loglevel))
+        case "discord":
+            if logProvider.provider_config is not None:
+                # TODO: validate discord logger config
+                logProviders.append(
+                    logging.DiscordLogger(
+                        webhook_url=logProvider.provider_config["webhook_url"],
+                        loglevel=loglevel,
+                    )
+                )
+
+logger = logging.Logger(logProviders=logProviders)
+
+logger.log(message="Configured Loggers", loglevel=logging.LogLevel.INFO)
+
+if config.global_.dry_run:
+    logger.log(
+        message="This is a dryrun. No Updates will be applied.",
+        loglevel=logging.LogLevel.INFO,
+    )
+
+
+async def shutdown(signal, loop: asyncio.AbstractEventLoop):
+    logger.log(f"Received exit signal {signal.name}…", logging.LogLevel.INFO)
+    # if you have any shared resources, clean up, cancel tasks
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    for t in tasks:
+        t.cancel()
+    logger.log("Cancelling outstanding tasks", logging.LogLevel.INFO)
+    await asyncio.gather(*tasks, return_exceptions=True)
+    loop.stop()
+
+
+def main():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Hook signals for graceful shutdown
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(
+            sig, lambda s=sig: asyncio.create_task(shutdown(s, loop))
+        )
+
+    print("Starting Cron Job")
+
+    # Schedule the cron job every minute
+    cron_job = aiocron.crontab(
+        config.global_.cron,
+        func=lambda: providers.run_all_providers(config=config, logger=logger),
+        start=True,
+    )
+
+    try:
+        # Keep loop running
+        loop.run_forever()
+    finally:
+        loop.close()
+
+
+if __name__ == "__main__":
+    main()
