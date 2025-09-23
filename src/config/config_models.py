@@ -9,6 +9,7 @@ class LoggingConfig(BaseModel):
   provider_config: Any | None = None
 
 class GlobalConfig(BaseModel):
+  cron: str = "*/1 * * * *"
   ttl: int
   current_prefix_offset: str #hexadecimal
   dry_run: bool = Field(..., alias="dry-run")
