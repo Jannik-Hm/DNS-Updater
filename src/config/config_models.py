@@ -15,6 +15,8 @@ class GlobalConfig(BaseModel):
   dry_run: bool = Field(False, alias="dry-run") # no dry run by default
   disable_v4: bool = Field(False, alias="disable-ipv4") # enable ipv4 by default
   disable_v6: bool = Field(True, alias="disable-ipv6") # disable ipv6 by default
+  allowed_consecutive_ip_fetch_timeouts: int = 0 # by default 0 consecutive fails are allowed before firing alert
+  allowed_consecutive_provider_timeouts: int = 0
   logging: list[LoggingConfig]
 
   @model_validator(mode="after")
@@ -38,6 +40,7 @@ class ZonesConfig(BaseModel):
 
 class ProviderConfig(BaseModel, Generic[ProviderConfigConfig]):
   provider: str
+  allowed_consecutive_timeouts: int | None = None
   provider_config: ProviderConfigConfig
   zones: list[ZonesConfig]
 

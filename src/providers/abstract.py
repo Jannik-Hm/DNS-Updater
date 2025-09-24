@@ -7,14 +7,17 @@ from config.config_models import ProviderConfig, GlobalConfig
 from helper_functions import logging
 from ip_fetching import calculateIPv6Address
 
-# TODO: allow consecutive fails (for timeout cases)
-
 
 class Record(BaseModel):
     ttl: int | None = None
     name: str
     value: str
     type: str
+
+
+class ProviderFailCounter(BaseModel):
+    fetchFail: int = 0
+    updateFail: int = 0
 
 
 class Provider(ABC):
@@ -27,6 +30,7 @@ class Provider(ABC):
     zone_ids: dict[str, str] = {}
     updated_zone_records: dict[str, dict[str, Record]] = {}
     created_zone_records: dict[str, dict[str, Record]] = {}
+    consecutive_fail_counter: ProviderFailCounter
 
     def __init__(
         self,
@@ -37,6 +41,7 @@ class Provider(ABC):
         self.config = self.validateConfig(providerConfig)
         self.globalConfig = globalConfig
         self.logger = logger
+        self.consecutive_fail_counter = ProviderFailCounter()
 
     @abstractmethod
     def validateConfig(self, config: ProviderConfig[Any]) -> ProviderConfig[Any]:

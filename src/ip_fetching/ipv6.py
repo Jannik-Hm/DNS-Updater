@@ -4,21 +4,38 @@ import ipaddress as ipaddress
 from config import Config
 from helper_functions import logging
 
-
-def calculateIPv6Address(prefix: list[str], prefixOffset: str, currentAddressOrFixedSuffix: str) -> str:
-  prefix_int = int("".join(prefix[:4]), 16)
-  prefix_id_int = int(prefixOffset, 10)
-  if f"{(prefix_int + prefix_id_int):016x}".__len__() > 16:
-    raise ValueError(f"The generated prefix for base prefix {':'.join(prefix[:4])} and prefixOffset {prefixOffset} is overflowing. Please check your config.")
-  new_prefix = f"{(prefix_int + prefix_id_int) & 0xFFFFFFFFFFFFFFFF:016x}"
-  return ipaddress.IPv6Address(":".join(new_prefix[i:i+4] for i in range(0, len(new_prefix), 4)) + ":" + ":".join(ipaddress.IPv6Address(currentAddressOrFixedSuffix).exploded.split(sep=":")[-4:])).compressed
+from .fail_counter import ipFetchFails
 
 
-def getCurrentIPv6Prefix(config: Config, logger: logging.Logger) -> list[str] | None:
+def calculateIPv6Address(
+    prefix: list[str], prefixOffset: str, currentAddressOrFixedSuffix: str
+) -> str:
+    prefix_int = int("".join(prefix[:4]), 16)
+    prefix_id_int = int(prefixOffset, 10)
+    if f"{(prefix_int + prefix_id_int):016x}".__len__() > 16:
+        raise ValueError(
+            f"The generated prefix for base prefix {':'.join(prefix[:4])} and prefixOffset {prefixOffset} is overflowing. Please check your config."
+        )
+    new_prefix = f"{(prefix_int + prefix_id_int) & 0xFFFFFFFFFFFFFFFF:016x}"
+    return ipaddress.IPv6Address(
+        ":".join(new_prefix[i : i + 4] for i in range(0, len(new_prefix), 4))
+        + ":"
+        + ":".join(
+            ipaddress.IPv6Address(currentAddressOrFixedSuffix).exploded.split(sep=":")[
+                -4:
+            ]
+        )
+    ).compressed
+
+
+def getCurrentIPv6Prefix(
+    config: Config, logger: logging.Logger, consecutive_ip_fails: ipFetchFails
+) -> list[str] | None:
     logger.log("Getting current IPv6 Address", loglevel=logging.LogLevel.DEBUG)
     try:
         ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
         if ipv6Address is not None:
+            consecutive_ip_fails.ipV6Fail = 0
             ipv6Prefix = calculateIPv6Address(
                 prefix=ipaddress.IPv6Address(ipv6Address).exploded.split(":"),
                 prefixOffset="-"
@@ -27,14 +44,20 @@ def getCurrentIPv6Prefix(config: Config, logger: logging.Logger) -> list[str] | 
             ).split(":")
             return ipv6Prefix
     except requests.exceptions.ConnectTimeout:
-        logger.log(
-            message="Timeout getting current IPv6 Address",
-            loglevel=logging.LogLevel.FATAL,
-        )
+        consecutive_ip_fails.ipV6Fail += 1
+        if consecutive_ip_fails.ipV6Fail > config.global_.allowed_consecutive_ip_fetch_timeouts:
+            logger.log(
+                message=f"Timeout getting current IPv6 Address {consecutive_ip_fails.ipV6Fail} time(s) in a row",
+                loglevel=logging.LogLevel.FATAL,
+            )
     except requests.exceptions.ConnectionError:
-        logger.log(
-            message="Unable to establish connection getting current IPv6 Address",
-            loglevel=logging.LogLevel.FATAL,
-        )
+        consecutive_ip_fails.ipV6Fail += 1
+        if consecutive_ip_fails.ipV6Fail > config.global_.allowed_consecutive_ip_fetch_timeouts:
+            logger.log(
+                message=f"Unable to establish connection {consecutive_ip_fails.ipV6Fail} time(s) in a row getting current IPv6 Address",
+                loglevel=logging.LogLevel.FATAL,
+            )
     except ValueError as e:
-        logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
+        consecutive_ip_fails.ipV6Fail += 1
+        if consecutive_ip_fails.ipV6Fail > config.global_.allowed_consecutive_ip_fetch_timeouts:
+            logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)

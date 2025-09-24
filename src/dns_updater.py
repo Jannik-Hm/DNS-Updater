@@ -1,6 +1,7 @@
 import ipaddress as ipaddress
-import aiohttp
+from pydantic import BaseModel
 import yaml as yaml
+import os
 
 import asyncio
 import signal
@@ -10,9 +11,9 @@ import providers
 from helper_functions import logging
 
 from config import Config, load_config
+from ip_fetching import ipFetchFails
 
-# TODO: load this from an env var
-config_location = "dns_config.yaml"
+config_location = os.getenv("CONFIG_PATH", "/etc/dns_updater/config.yaml")
 
 print("[INFO]: Loading Config from file")
 
@@ -74,12 +75,12 @@ async def initProviders() -> list[providers.AsyncProvider]:
 
 
 def main():
-    print("Initialising DNS Providers...")
-
-    providerList: list[providers.AsyncProvider] = asyncio.run(initProviders())
-
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+
+    print("Initialising DNS Providers...")
+
+    providerList: list[providers.AsyncProvider] = loop.run_until_complete(initProviders())
 
     # Hook signals for graceful shutdown
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -89,11 +90,13 @@ def main():
 
     print("Starting Cron Job...")
 
+    consecutive_ip_fails = ipFetchFails()
+
     # Schedule the cron job every minute
     cron_job = aiocron.crontab(
         config.global_.cron,
         func=lambda: providers.run_all_providers(
-            providers=providerList, config=config, logger=logger
+            providers=providerList, config=config, logger=logger, consecutive_ip_fails=consecutive_ip_fails
         ),
         start=True,
     )
