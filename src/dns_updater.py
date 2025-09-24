@@ -1,4 +1,5 @@
 import ipaddress as ipaddress
+import aiohttp
 import yaml as yaml
 
 import asyncio
@@ -47,7 +48,7 @@ if config.global_.dry_run:
     )
 
 
-async def shutdown(signal, loop: asyncio.AbstractEventLoop):
+async def shutdown(signal, loop: asyncio.AbstractEventLoop, providerList: list[providers.AsyncProvider]):
     logger.log(f"Received exit signal {signal.name}…", logging.LogLevel.INFO)
     # if you have any shared resources, clean up, cancel tasks
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
@@ -55,25 +56,45 @@ async def shutdown(signal, loop: asyncio.AbstractEventLoop):
         t.cancel()
     logger.log("Cancelling outstanding tasks", logging.LogLevel.INFO)
     await asyncio.gather(*tasks, return_exceptions=True)
+    logger.log("Closing all open aiohttp Sessions", logging.LogLevel.INFO)
+    for provider in providerList:
+        await provider.aioSession.close()
     loop.stop()
 
 
+async def initProviders() -> list[providers.AsyncProvider]:
+    return [
+        providers.providerMap[providerConfig.provider.upper()](
+            providerConfig=providerConfig,
+            globalConfig=config.global_,
+            logger=logger,
+        )
+        for providerConfig in config.providers
+    ]
+
+
 def main():
+    print("Initialising DNS Providers...")
+
+    providerList: list[providers.AsyncProvider] = asyncio.run(initProviders())
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     # Hook signals for graceful shutdown
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(
-            sig, lambda s=sig: asyncio.create_task(shutdown(s, loop))
+            sig, lambda s=sig: asyncio.create_task(shutdown(s, loop, providerList))
         )
 
-    print("Starting Cron Job")
+    print("Starting Cron Job...")
 
     # Schedule the cron job every minute
     cron_job = aiocron.crontab(
         config.global_.cron,
-        func=lambda: providers.run_all_providers(config=config, logger=logger),
+        func=lambda: providers.run_all_providers(
+            providers=providerList, config=config, logger=logger
+        ),
         start=True,
     )
 

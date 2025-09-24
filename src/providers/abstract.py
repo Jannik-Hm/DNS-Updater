@@ -118,9 +118,8 @@ class AsyncProvider(Provider):
         providerConfig: ProviderConfig[Any],
         globalConfig: GlobalConfig,
         logger: logging.Logger,
-        aioSession: aiohttp.ClientSession,
     ):
-        self.aioSession = aioSession
+        self.aioSession = aiohttp.ClientSession()
         super().__init__(providerConfig, globalConfig, logger)
 
     @abstractmethod
