@@ -2,7 +2,7 @@ import requests
 import ipaddress as ipaddress
 
 from config import Config
-from helper_functions import logging
+from custom_logging import Logger
 
 from .fail_counter import ipFetchFails
 
@@ -29,9 +29,10 @@ def calculateIPv6Address(
 
 
 def getCurrentIPv6Prefix(
-    config: Config, logger: logging.Logger, consecutive_ip_fails: ipFetchFails
+    config: Config, consecutive_ip_fails: ipFetchFails
 ) -> list[str] | None:
-    logger.log("Getting current IPv6 Address", loglevel=logging.LogLevel.DEBUG)
+    logger = Logger.getDNSUpdaterLogger()
+    logger.debug("Getting current IPv6 Address")
     try:
         ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
         if ipv6Address is not None:
@@ -45,19 +46,26 @@ def getCurrentIPv6Prefix(
             return ipv6Prefix
     except requests.exceptions.ConnectTimeout:
         consecutive_ip_fails.ipV6Fail += 1
-        if consecutive_ip_fails.ipV6Fail > config.global_.allowed_consecutive_ip_fetch_timeouts:
-            logger.log(
-                message=f"Timeout getting current IPv6 Address {consecutive_ip_fails.ipV6Fail} time(s) in a row",
-                loglevel=logging.LogLevel.FATAL,
+        if (
+            consecutive_ip_fails.ipV6Fail
+            > config.global_.allowed_consecutive_ip_fetch_timeouts
+        ):
+            logger.error(
+                f"Timeout getting current IPv6 Address {consecutive_ip_fails.ipV6Fail} time(s) in a row"
             )
     except requests.exceptions.ConnectionError:
         consecutive_ip_fails.ipV6Fail += 1
-        if consecutive_ip_fails.ipV6Fail > config.global_.allowed_consecutive_ip_fetch_timeouts:
-            logger.log(
-                message=f"Unable to establish connection {consecutive_ip_fails.ipV6Fail} time(s) in a row getting current IPv6 Address",
-                loglevel=logging.LogLevel.FATAL,
+        if (
+            consecutive_ip_fails.ipV6Fail
+            > config.global_.allowed_consecutive_ip_fetch_timeouts
+        ):
+            logger.error(
+                f"Unable to establish connection {consecutive_ip_fails.ipV6Fail} time(s) in a row getting current IPv6 Address",
             )
     except ValueError as e:
         consecutive_ip_fails.ipV6Fail += 1
-        if consecutive_ip_fails.ipV6Fail > config.global_.allowed_consecutive_ip_fetch_timeouts:
-            logger.log(message=str(e.args), loglevel=logging.LogLevel.FATAL)
+        if (
+            consecutive_ip_fails.ipV6Fail
+            > config.global_.allowed_consecutive_ip_fetch_timeouts
+        ):
+            logger.error(str(e.args))

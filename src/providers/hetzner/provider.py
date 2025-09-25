@@ -4,8 +4,8 @@ from typing import Any
 
 import requests
 
-from helper_functions import logging
 from config.config_models import GlobalConfig, ProviderConfig
+from custom_logging.logger import Logger
 from providers import Provider
 
 from .api_pydantic_models import *
@@ -26,7 +26,7 @@ class HetznerProvider(Provider):
 
     def getCurrentDNSConfig(self):
         api_token: str = self.config.provider_config.api_token
-        logger = self.logger
+        logger = Logger.getDNSUpdaterLogger()
         globalConfig = self.globalConfig
 
         try:
@@ -42,21 +42,18 @@ class HetznerProvider(Provider):
             if getZones.status_code != 200:
                 match getZones.status_code:
                     case 400:
-                        logger.log(
-                            message="Get Hetzner Zones - Pagination selectors are mutually exclusive",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            "Get Hetzner Zones - Pagination selectors are mutually exclusive",
                         )
                         return
                     case 401:
-                        logger.log(
-                            message="Get Hetzner Zones - " + getZones.reason,
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            "Get Hetzner Zones - " + getZones.reason,
                         )
                         return
                     case 406:
-                        logger.log(
-                            message="Get Hetzner Zones - " + getZones.reason,
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            "Get Hetzner Zones - " + getZones.reason,
                         )
                         return
             try:
@@ -65,9 +62,8 @@ class HetznerProvider(Provider):
                     self.zone_records[entry.id] = {}
                     self.zone_ids[entry.name] = entry.id
             except ValidationError as e:
-                logger.log(
-                    message="Hetzner Zones Endpoint responded with invalid Response Body",
-                    loglevel=logging.LogLevel.ERROR,
+                logger.error(
+                    "Hetzner Zones Endpoint responded with invalid Response Body",
                 )
                 raise e
 
@@ -81,15 +77,13 @@ class HetznerProvider(Provider):
             if getRecords.status_code != 200:
                 match getRecords.status_code:
                     case 401:
-                        logger.log(
-                            message="Get Hetzner Records - " + getRecords.reason,
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            "Get Hetzner Records - " + getRecords.reason,
                         )
                         return
                     case 406:
-                        logger.log(
-                            message="Get Hetzner Records - " + getRecords.reason,
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            "Get Hetzner Records - " + getRecords.reason,
                         )
                         return
             try:
@@ -104,15 +98,13 @@ class HetznerProvider(Provider):
                             entry.type + "-" + entry.name
                         ] = entry
             except ValidationError as e:
-                logger.log(
-                    message="Hetzner Records Endpoint responded with invalid Response Body",
-                    loglevel=logging.LogLevel.ERROR,
+                logger.error(
+                    "Hetzner Records Endpoint responded with invalid Response Body",
                 )
                 raise e
         except requests.exceptions.Timeout as e:
-            logger.log(
-                message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ''}",
-                loglevel=logging.LogLevel.FATAL,
+            logger.error(
+                f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ''}",
             )
 
     def createDNSRecord(self, type: str, name: str, value: str, zoneName: str):
@@ -130,7 +122,7 @@ class HetznerProvider(Provider):
 
     def updateDNSConfig(self):
         api_token: str = self.config.provider_config.api_token
-        logger = self.logger
+        logger = Logger.getDNSUpdaterLogger()
         globalConfig = self.globalConfig
 
         try:
@@ -141,12 +133,13 @@ class HetznerProvider(Provider):
                 for record in zone.values()
             ]
             if globalConfig.dry_run:
-                logger.log(
-                    message="These Records would be updated:\n"
+                logger.info(
+                    "These Records would be updated:\n"
                     + "```"
-                    + json.dumps([record.model_dump() for record in updated_zone_records])
+                    + json.dumps(
+                        [record.model_dump() for record in updated_zone_records]
+                    )
                     + "```",
-                    loglevel=logging.LogLevel.INFO,
                 )
             elif len(updated_zone_records) > 0:
                 updateResponse = requests.put(
@@ -155,42 +148,40 @@ class HetznerProvider(Provider):
                         "Content-Type": "application/json",
                         "Auth-API-Token": api_token,
                     },
-                    data=json.dumps({"records": [record.model_dump() for record in updated_zone_records]}),
+                    data=json.dumps(
+                        {
+                            "records": [
+                                record.model_dump() for record in updated_zone_records
+                            ]
+                        }
+                    ),
                     timeout=10,
                 )
 
                 if updateResponse.status_code != 200:
                     match updateResponse.status_code:
                         case 401:
-                            logger.log(
-                                message="Update A Records Error - "
-                                + updateResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update A Records Error - " + updateResponse.reason,
                             )
                         case 403:
-                            logger.log(
-                                message="Update A Records Error - "
-                                + updateResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update A Records Error - " + updateResponse.reason,
                             )
                         case 406:
-                            logger.log(
-                                message="Update A Records Error - "
-                                + updateResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update A Records Error - " + updateResponse.reason,
                             )
                         case 422:
-                            logger.log(
-                                message="Update A Records Error - Unprocessable entity",
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update A Records Error - Unprocessable entity",
                             )
                 else:
-                    logger.log(
-                        message="These Records were updated:\n"
+                    logger.info(
+                        "These Records were updated:\n"
                         + "```"
                         + json.dumps(updateResponse.json()["records"])
                         + "```",
-                        loglevel=logging.LogLevel.INFO,
                     )
 
             created_zone_records = [
@@ -199,12 +190,13 @@ class HetznerProvider(Provider):
                 for record in zone.values()
             ]
             if globalConfig.dry_run:
-                logger.log(
-                    message="These Records would be created:\n"
+                logger.info(
+                    "These Records would be created:\n"
                     + "```"
-                    + json.dumps([record.model_dump() for record in created_zone_records])
+                    + json.dumps(
+                        [record.model_dump() for record in created_zone_records]
+                    )
                     + "```",
-                    loglevel=logging.LogLevel.INFO,
                 )
             elif len(created_zone_records) > 0:
                 createResponse = requests.post(
@@ -213,58 +205,51 @@ class HetznerProvider(Provider):
                         "Content-Type": "application/json",
                         "Auth-API-Token": api_token,
                     },
-                    data=json.dumps({"records": [record.model_dump() for record in created_zone_records]}),
+                    data=json.dumps(
+                        {
+                            "records": [
+                                record.model_dump() for record in created_zone_records
+                            ]
+                        }
+                    ),
                     timeout=10,
                 )
 
                 if createResponse.status_code != 200:
                     match createResponse.status_code:
                         case 401:
-                            logger.log(
-                                message="Update AAAA Records Error - "
-                                + createResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update AAAA Records Error - " + createResponse.reason,
                             )
                         case 403:
-                            logger.log(
-                                message="Update AAAA Records Error - "
-                                + createResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update AAAA Records Error - " + createResponse.reason,
                             )
                         case 404:
-                            logger.log(
-                                message="Update AAAA Records Error - "
-                                + createResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update AAAA Records Error - " + createResponse.reason,
                             )
                         case 406:
-                            logger.log(
-                                message="Update AAAA Records Error - "
-                                + createResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update AAAA Records Error - " + createResponse.reason,
                             )
                         case 409:
-                            logger.log(
-                                message="Update AAAA Records Error - "
-                                + createResponse.reason,
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update AAAA Records Error - " + createResponse.reason,
                             )
                         case 422:
-                            logger.log(
-                                message="Update AAAA Records Error - Unprocessable entity",
-                                loglevel=logging.LogLevel.FATAL,
+                            logger.error(
+                                "Update AAAA Records Error - Unprocessable entity",
                             )
                 else:
-                    logger.log(
-                        message="These Records were created:\n"
+                    logger.info(
+                        "These Records were created:\n"
                         + "```"
                         + json.dumps(createResponse.json()["records"])
                         + "```",
-                        loglevel=logging.LogLevel.INFO,
                     )
 
         except requests.exceptions.ConnectionError as e:
-            logger.log(
-                message=f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ''}",
-                loglevel=logging.LogLevel.FATAL,
+            logger.error(
+                f"Hetzner Zone Timeout during calling {e.request.url if e.request is not None else ''}",
             )

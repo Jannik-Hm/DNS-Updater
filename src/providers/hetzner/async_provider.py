@@ -5,8 +5,8 @@ from typing import Any
 import aiohttp
 import asyncio
 
-from helper_functions import logging
 from config.config_models import ProviderConfig
+from custom_logging.logger import Logger
 from providers import AsyncProvider
 
 from .api_pydantic_models import *
@@ -27,7 +27,7 @@ class AsyncHetznerProvider(AsyncProvider):
 
     async def getCurrentDNSConfig(self):
         api_token: str = self.config.provider_config.api_token
-        logger = self.logger
+        logger = Logger.getDNSUpdaterLogger()
         globalConfig = self.globalConfig
 
         apiTimeout = aiohttp.ClientTimeout(total=10)
@@ -43,21 +43,18 @@ class AsyncHetznerProvider(AsyncProvider):
         if getZones.status != 200:
             match getZones.status:
                 case 400:
-                    logger.log(
-                        message="Get Hetzner Zones - Pagination selectors are mutually exclusive",
-                        loglevel=logging.LogLevel.FATAL,
+                    logger.error(
+                        "Get Hetzner Zones - Pagination selectors are mutually exclusive",
                     )
                     return
                 case 401:
-                    logger.log(
-                        message=f"Get Hetzner Zones - {getZones.reason}",
-                        loglevel=logging.LogLevel.FATAL,
+                    logger.error(
+                        f"Get Hetzner Zones - {getZones.reason}",
                     )
                     return
                 case 406:
-                    logger.log(
-                        message=f"Get Hetzner Zones - {getZones.reason}",
-                        loglevel=logging.LogLevel.FATAL,
+                    logger.error(
+                        f"Get Hetzner Zones - {getZones.reason}",
                     )
                     return
         try:
@@ -66,9 +63,8 @@ class AsyncHetznerProvider(AsyncProvider):
                 self.zone_records[entry.id] = {}
                 self.zone_ids[entry.name] = entry.id
         except ValidationError as e:
-            logger.log(
-                message="Hetzner Zones Endpoint responded with invalid Response Body",
-                loglevel=logging.LogLevel.ERROR,
+            logger.error(
+                "Hetzner Zones Endpoint responded with invalid Response Body",
             )
             raise e
 
@@ -82,15 +78,14 @@ class AsyncHetznerProvider(AsyncProvider):
         if getRecords.status != 200:
             match getRecords.status:
                 case 401:
-                    logger.log(
-                        message=f"Get Hetzner Zones - {getRecords.reason}",
-                        loglevel=logging.LogLevel.FATAL,
+                    logger.error(
+                        f"Get Hetzner Zones - {getRecords.reason}",
                     )
                     return
                 case 406:
-                    logger.log(
-                        message=f"Get Hetzner Zones - {getRecords.reason}",
-                        loglevel=logging.LogLevel.FATAL,
+                    logger.error(
+                        f"Get Hetzner Zones - {getRecords.reason}",
+
                     )
                     return
         try:
@@ -105,9 +100,8 @@ class AsyncHetznerProvider(AsyncProvider):
                         entry.type + "-" + entry.name
                     ] = entry
         except ValidationError as e:
-            logger.log(
-                message="Hetzner Records Endpoint responded with invalid Response Body",
-                loglevel=logging.LogLevel.ERROR,
+            logger.error(
+                "Hetzner Records Endpoint responded with invalid Response Body",
             )
             raise e
 
@@ -126,7 +120,7 @@ class AsyncHetznerProvider(AsyncProvider):
 
     async def updateDNSConfig(self):
         api_token: str = self.config.provider_config.api_token
-        logger = self.logger
+        logger = Logger.getDNSUpdaterLogger()
         globalConfig = self.globalConfig
 
         apiTimeout = aiohttp.ClientTimeout(total=10)
@@ -137,14 +131,13 @@ class AsyncHetznerProvider(AsyncProvider):
             for record in zone.values()
         ]
         if globalConfig.dry_run:
-            logger.log(
-                message="These Records would be updated:\n"
+            logger.info(
+                "These Records would be updated:\n"
                 + "```"
                 + json.dumps(
                     [record.model_dump() for record in updated_zone_records]
                 )
                 + "```",
-                loglevel=logging.LogLevel.INFO,
             )
         elif len(updated_zone_records) > 0:
             updateResponse = await self.aioSession.put(
@@ -166,32 +159,31 @@ class AsyncHetznerProvider(AsyncProvider):
             if updateResponse.status != 200:
                 match updateResponse.status:
                     case 401:
-                        logger.log(
-                            message=f"Update A Records Error - {updateResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update A Records Error - {updateResponse.reason}",
+                            
                         )
                     case 403:
-                        logger.log(
-                            message=f"Update A Records Error - {updateResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update A Records Error - {updateResponse.reason}",
+                            
                         )
                     case 406:
-                        logger.log(
-                            message=f"Update A Records Error - {updateResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update A Records Error - {updateResponse.reason}",
+                            
                         )
                     case 422:
-                        logger.log(
-                            message="Update A Records Error - Unprocessable entity",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            "Update A Records Error - Unprocessable entity",
+                            
                         )
             else:
-                logger.log(
-                    message="These Records were updated:\n"
+                logger.info(
+                    "These Records were updated:\n"
                     + "```"
                     + json.dumps((await updateResponse.json())["records"])
                     + "```",
-                    loglevel=logging.LogLevel.INFO,
                 )
 
         created_zone_records = [
@@ -200,14 +192,13 @@ class AsyncHetznerProvider(AsyncProvider):
             for record in zone.values()
         ]
         if globalConfig.dry_run:
-            logger.log(
-                message="These Records would be created:\n"
+            logger.info(
+                "These Records would be created:\n"
                 + "```"
                 + json.dumps(
                     [record.model_dump() for record in created_zone_records]
                 )
                 + "```",
-                loglevel=logging.LogLevel.INFO,
             )
         elif len(created_zone_records) > 0:
             createResponse = await self.aioSession.post(
@@ -229,40 +220,39 @@ class AsyncHetznerProvider(AsyncProvider):
             if createResponse.status != 200:
                 match createResponse.status:
                     case 401:
-                        logger.log(
-                            message=f"Update AAAA Records Error - {createResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update AAAA Records Error - {createResponse.reason}",
+                            
                         )
                     case 403:
-                        logger.log(
-                            message=f"Update AAAA Records Error - {createResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update AAAA Records Error - {createResponse.reason}",
+                            
                         )
                     case 404:
-                        logger.log(
-                            message=f"Update AAAA Records Error - {createResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update AAAA Records Error - {createResponse.reason}",
+                            
                         )
                     case 406:
-                        logger.log(
-                            message=f"Update AAAA Records Error - {createResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update AAAA Records Error - {createResponse.reason}",
+                            
                         )
                     case 409:
-                        logger.log(
-                            message=f"Update AAAA Records Error - {createResponse.reason}",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            f"Update AAAA Records Error - {createResponse.reason}",
+                            
                         )
                     case 422:
-                        logger.log(
-                            message="Update AAAA Records Error - Unprocessable entity",
-                            loglevel=logging.LogLevel.FATAL,
+                        logger.error(
+                            "Update AAAA Records Error - Unprocessable entity",
+                            
                         )
             else:
-                logger.log(
-                    message="These Records were created:\n"
+                logger.info(
+                    "These Records were created:\n"
                     + "```"
                     + json.dumps((await createResponse.json())["records"])
                     + "```",
-                    loglevel=logging.LogLevel.INFO,
                 )

@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from typing import Any
 import aiohttp
 
+from custom_logging import Logger
 from config.config_models import ProviderConfig, GlobalConfig
-from helper_functions import logging
 from ip_fetching import calculateIPv6Address
 
 
@@ -23,7 +23,6 @@ class ProviderFailCounter(BaseModel):
 class Provider(ABC):
     config: ProviderConfig[Any]
     globalConfig: GlobalConfig
-    logger: logging.Logger
     zone_records: dict[str, dict[str, Record]] = (
         {}
     )  # dict[zone_id, dict[type-record_name, Record]]
@@ -36,11 +35,9 @@ class Provider(ABC):
         self,
         providerConfig: ProviderConfig[Any],
         globalConfig: GlobalConfig,
-        logger: logging.Logger,
     ):
         self.config = self.validateConfig(providerConfig)
         self.globalConfig = globalConfig
-        self.logger = logger
         self.consecutive_fail_counter = ProviderFailCounter()
 
     @abstractmethod
@@ -122,10 +119,9 @@ class AsyncProvider(Provider):
         self,
         providerConfig: ProviderConfig[Any],
         globalConfig: GlobalConfig,
-        logger: logging.Logger,
     ):
         self.aioSession = aiohttp.ClientSession()
-        super().__init__(providerConfig, globalConfig, logger)
+        super().__init__(providerConfig, globalConfig)
 
     @abstractmethod
     async def getCurrentDNSConfig(self):
