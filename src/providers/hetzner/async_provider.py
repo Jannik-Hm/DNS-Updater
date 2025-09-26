@@ -159,22 +159,22 @@ class AsyncHetznerProvider(AsyncProvider):
                 match updateResponse.status:
                     case 401:
                         logger.error(
-                            f"Update A Records Error - {updateResponse.reason}",
+                            f"Update Hetzner Records Error - {updateResponse.reason}",
                             
                         )
                     case 403:
                         logger.error(
-                            f"Update A Records Error - {updateResponse.reason}",
+                            f"Update Hetzner Records Error - {updateResponse.reason}",
                             
                         )
                     case 406:
                         logger.error(
-                            f"Update A Records Error - {updateResponse.reason}",
+                            f"Update Hetzner Records Error - {updateResponse.reason}",
                             
                         )
                     case 422:
                         logger.error(
-                            "Update A Records Error - Unprocessable entity",
+                            "Update Hetzner Records Error - Unprocessable entity",
                             
                         )
             else:
@@ -220,33 +220,33 @@ class AsyncHetznerProvider(AsyncProvider):
                 match createResponse.status:
                     case 401:
                         logger.error(
-                            f"Update AAAA Records Error - {createResponse.reason}",
+                            f"Create Hetzner Records Error - {createResponse.reason}",
                             
                         )
                     case 403:
                         logger.error(
-                            f"Update AAAA Records Error - {createResponse.reason}",
+                            f"Create Hetzner Records Error - {createResponse.reason}",
                             
                         )
                     case 404:
                         logger.error(
-                            f"Update AAAA Records Error - {createResponse.reason}",
+                            f"Create Hetzner Records Error - {createResponse.reason}",
                             
                         )
                     case 406:
                         logger.error(
-                            f"Update AAAA Records Error - {createResponse.reason}",
+                            f"Create Hetzner Records Error - {createResponse.reason}",
                             
                         )
                     case 409:
                         logger.error(
-                            f"Update AAAA Records Error - {createResponse.reason}",
+                            f"Create Hetzner Records Error - {createResponse.reason}",
                             
                         )
                     case 422:
                         logger.error(
-                            "Update AAAA Records Error - Unprocessable entity",
-                            
+                            "Create Hetzner Records Error - Unprocessable entity",
+
                         )
             else:
                 logger.info(
