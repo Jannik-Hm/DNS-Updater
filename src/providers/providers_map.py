@@ -56,6 +56,11 @@ async def providerFetchAndUpdate(
             logger.debug(
                 f"{type(provider)} Zone Timeout updating DNS Records within allowed limit",
             )
+    # clear attributes before next loop iteration
+    provider.updated_zone_records = {}
+    provider.created_zone_records = {}
+    provider.zone_ids = {}
+    provider.zone_records = {}
 
 
 async def run_all_providers(
