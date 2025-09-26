@@ -34,4 +34,4 @@ class DiscordLogProvider(LogProvider):
 
     @staticmethod
     def validateConfig(loggingConfig: Any) -> DiscordLogProviderConfig:
-        return DiscordLogProviderConfig.model_validate(loggingConfig)
+        return DiscordLogProviderConfig.model_validate(loggingConfig or {})
