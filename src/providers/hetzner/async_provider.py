@@ -3,7 +3,6 @@ from pydantic import BaseModel, ValidationError
 from typing import Any
 
 import aiohttp
-import asyncio
 
 from config.config_models import ProviderConfig
 from custom_logging.logger import Logger

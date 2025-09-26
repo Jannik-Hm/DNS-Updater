@@ -1,14 +1,12 @@
 import asyncio
-from typing import Any, Type
+from typing import Type
 
-import aiohttp
-
-from config import Config, ProviderConfig, GlobalConfig
+from config import Config
 from ip_fetching import getCurrentIPv4Address, getCurrentIPv6Prefix, ipFetchFails
 from custom_logging import Logger
 
-from .abstract import Provider, AsyncProvider
-from .hetzner import HetznerProvider, AsyncHetznerProvider
+from .abstract import AsyncProvider
+from .hetzner import AsyncHetznerProvider
 
 
 providerMap: dict[str, Type[AsyncProvider]] = {

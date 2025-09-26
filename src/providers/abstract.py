@@ -3,7 +3,6 @@ from pydantic import BaseModel, ValidationError
 from typing import Any
 import aiohttp
 
-from custom_logging import Logger
 from config import ProviderConfig, GlobalConfig, handleValidationError
 from ip_fetching import calculateIPv6Address
 
@@ -20,7 +19,8 @@ class ProviderFailCounter(BaseModel):
     updateFail: int = 0
 
 
-class Provider(ABC):
+class AsyncProvider(ABC):
+    aioSession: aiohttp.ClientSession
     config: ProviderConfig[Any]
     globalConfig: GlobalConfig
     zone_records: dict[str, dict[str, Record]] = (
@@ -42,6 +42,7 @@ class Provider(ABC):
             handleValidationError(e, f"{providerConfig.provider} config")
         self.globalConfig = globalConfig
         self.consecutive_fail_counter = ProviderFailCounter()
+        self.aioSession = aiohttp.ClientSession()
 
     @abstractmethod
     def validateConfig(self, config: ProviderConfig[Any]) -> ProviderConfig[Any]:
@@ -49,7 +50,7 @@ class Provider(ABC):
         # call ProviderConfig[Specific Config Config].model_validate(self.config)
 
     @abstractmethod
-    def getCurrentDNSConfig(self):
+    async def getCurrentDNSConfig(self):
         pass
 
     def createDNSRecord(self, type: str, name: str, value: str, zoneName: str):
@@ -109,26 +110,6 @@ class Provider(ABC):
                             currentAddressOrFixedSuffix=record.suffix,
                         ),
                     )
-
-    @abstractmethod
-    def updateDNSConfig(self):
-        pass
-
-
-class AsyncProvider(Provider):
-    aioSession: aiohttp.ClientSession
-
-    def __init__(
-        self,
-        providerConfig: ProviderConfig[Any],
-        globalConfig: GlobalConfig,
-    ):
-        self.aioSession = aiohttp.ClientSession()
-        super().__init__(providerConfig, globalConfig)
-
-    @abstractmethod
-    async def getCurrentDNSConfig(self):
-        pass
 
     @abstractmethod
     async def updateDNSConfig(self):

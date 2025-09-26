@@ -1,5 +1,4 @@
 import ipaddress as ipaddress
-from pydantic import BaseModel
 import yaml as yaml
 import os
 
