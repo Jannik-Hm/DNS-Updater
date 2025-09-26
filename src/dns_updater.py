@@ -15,13 +15,13 @@ from ip_fetching import ipFetchFails
 
 config_location = os.getenv("CONFIG_PATH", "/etc/dns_updater/config.yaml")
 
-print("[INFO]: Loading Config from file")
+print("Loading Config from file...")
 
 config: Config = load_config(config_location)
 
 logger = Logger.initLoggerHandlers(config=config.global_)
 
-logger.info("Configured Loggers")
+print("Configured Loggers")
 
 if config.global_.dry_run:
     logger.info("This is a dryrun. No Updates will be applied.")
