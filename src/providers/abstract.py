@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import Any
 import aiohttp
 
 from custom_logging import Logger
-from config.config_models import ProviderConfig, GlobalConfig
+from config import ProviderConfig, GlobalConfig, handleValidationError
 from ip_fetching import calculateIPv6Address
 
 
@@ -36,7 +36,10 @@ class Provider(ABC):
         providerConfig: ProviderConfig[Any],
         globalConfig: GlobalConfig,
     ):
-        self.config = self.validateConfig(providerConfig)
+        try:
+            self.config = self.validateConfig(providerConfig)
+        except ValidationError as e:
+            handleValidationError(e, f"{providerConfig.provider} config")
         self.globalConfig = globalConfig
         self.consecutive_fail_counter = ProviderFailCounter()
 

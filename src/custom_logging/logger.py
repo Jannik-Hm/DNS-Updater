@@ -1,6 +1,7 @@
 import logging
+from pydantic import ValidationError
 
-from config import GlobalConfig
+from config import GlobalConfig, handleValidationError
 
 from .provider_map import providerMap
 
@@ -23,12 +24,15 @@ class Logger(object):
                     f"Skipping unknown log provider '{loggerConfig.provider}' in config"
                 )
                 continue
-            logger.addHandler(
-                providerMap[loggerConfig.provider.upper()].initHandler(
-                    loggingConfig=loggerConfig.provider_config,
-                    loglevel=loggerConfig.loglevel.upper(),
+            try:
+                logger.addHandler(
+                    providerMap[loggerConfig.provider.upper()].initHandler(
+                        loggingConfig=loggerConfig.provider_config,
+                        loglevel=loggerConfig.loglevel.upper(),
+                    )
                 )
-            )
+            except ValidationError as e:
+                handleValidationError(e, f"{loggerConfig.provider} logprovider config")
         return logger
 
     @staticmethod

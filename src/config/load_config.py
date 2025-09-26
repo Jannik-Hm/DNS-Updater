@@ -1,8 +1,10 @@
 import yaml
 import re
 from os import getenv
+from pydantic import ValidationError
 
 from .config_models import Config
+from .validationErrorHandler import handleValidationError
 
 var_substition_regex = re.compile(r"{{(.*?)}}")
 
@@ -23,8 +25,9 @@ def load_config(config_location: str) -> Config:
 
   config_json = yaml.safe_load(config_str)
 
-  # TODO: wrap in try-except and provide better error explanation
-
-  config: Config = Config.model_validate(config_json)
+  try:
+    config: Config = Config.model_validate(config_json)
+  except ValidationError as e:
+    handleValidationError(e, "application config")
 
   return config
