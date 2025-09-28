@@ -23,7 +23,6 @@ pycparser==2.23
 pydantic==2.11.9
 pydantic_core==2.33.2
 python-dateutil==2.9.0.post0
-python-logging-discord-handler==0.1.5
 PyYAML==6.0.2
 requests==2.32.3
 six==1.17.0

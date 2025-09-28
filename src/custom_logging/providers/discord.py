@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Any
 import logging
-from discord_logging.handler import DiscordHandler
+from ..custom_handlers import DiscordHandler
 
 from .abstract import LogProvider
 
@@ -29,7 +29,7 @@ class DiscordLogProvider(LogProvider):
             },
         )
         handler.setLevel(loglevel)
-        handler.setFormatter(logging.Formatter("%(levelname)s\n%(message)s"))
+        handler.setFormatter(logging.Formatter("%(message)s"))
         return handler
 
     @staticmethod
