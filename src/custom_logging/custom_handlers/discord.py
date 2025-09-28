@@ -1,0 +1,199 @@
+"""Python logging support for Discord.
+Inspired by / based on python-logging-discord-handler"""
+
+import logging
+import sys
+from requests import Response
+from discord_webhook import DiscordEmbed, DiscordWebhook
+from typing import Optional, List
+
+
+DEFAULT_COLOURS = {
+    None: 2040357,  # Unknown log level
+    logging.CRITICAL: 14362664,  # Red
+    logging.ERROR: 14362664,  # Red
+    logging.WARNING: 16497928,  # Yellow
+    logging.INFO: 2196944,  # Blue
+    logging.DEBUG: 8947848,  # Gray
+}
+
+
+#: The default log emojis as
+DEFAULT_EMOJIS = {
+    None: "",  # Unknown log level
+    logging.CRITICAL: "🆘",
+    logging.ERROR: "❌",
+    logging.WARNING: "⚠️",
+    logging.INFO: "",
+    logging.DEBUG: "",
+}
+
+
+class DiscordHandler(logging.Handler):
+    """Output logs to Discord chat.
+
+    A handler class which writes logging records, appropriately formatted,
+    to a Discord Server using webhooks.
+
+    Inspired by / based on [python-logging-discord-handler](https://pypi.org/project/python-logging-discord-handler/).
+    """
+
+    def __init__(
+        self,
+        service_name: str,
+        webhook_url: str,
+        colours=DEFAULT_COLOURS,
+        emojis=DEFAULT_EMOJIS,
+        avatar_url: Optional[str] = None,
+        rate_limit_retry: bool = True,
+        embed_line_wrap_threshold: int = 60,
+        message_break_char: Optional[str] = None,
+        discord_timeout: float = 5.0,
+    ):
+        """
+
+        :param service_name: Shows at the bot username in Discord.
+        :param webhook_url: Channel webhook URL. See README for details.
+        :param colours: Log level to Discord embed color mapping
+        :param emojis:
+            Log level to emoticon decoration mapping.
+            If present this is appended as a prefix to the first line of the log.
+        :param avatar_url: Bot profile picture
+        :param rate_limit_retry: Try to recover when Discord server tells us to slow down
+        :param embed_line_wrap_threshold:
+            How many characters a text line can contain until we go to "long line" output format.
+        :param message_break_char:
+            If given, manually split log entry text to several Discord messages by this character.
+            Useful if your application output long custom messages.
+            For example, you can use ellipsis `…` in your log message to split in several Discord
+            messages to overcome the 2000 character limitation.
+        :param discord_timeout:
+            How many seconds to wait before giving up on Discord request.
+        """
+
+        logging.Handler.__init__(self)
+        self.webhook_url = webhook_url
+        self.service_name = service_name
+        self.colours = colours
+        self.emojis = emojis
+        self.rate_limit_retry = rate_limit_retry
+        self.avatar_url = avatar_url
+        self.reentry_barrier = False
+        self.embed_line_wrap_threshold = embed_line_wrap_threshold
+        self.message_break_char = message_break_char
+        self.discord_timeout = discord_timeout
+
+    def split_by_break_character(self, content: str) -> List[str]:
+        """Split the inbound log message to several Discord messages.
+
+        Uses manual break character method if set. If not set,
+        then do nothing.
+        """
+        if self.message_break_char:
+            return content.split(self.message_break_char)
+        else:
+            return [content]
+
+    def attempt_to_report_failure(self, resp: Response, original: DiscordWebhook):
+        """Attempt to report a failure to deliver a log message.
+
+        Usually this happens if we pass content to Discord the server does not like.
+
+        More information
+
+        - https://stackoverflow.com/questions/53935198/in-my-discord-webhook-i-am-getting-the-error-embeds-0
+        """
+        # Output to the stderr, as it is not safe to use logging here
+        #
+        print(
+            f"Discord webhook request failed: {resp.status_code}: {resp.content}. Payload content was: {original.content}, embeds: {original.embeds}",
+            file=sys.stderr,
+        )
+        # Attempt to warn user about log failure
+        discord = DiscordWebhook(
+            url=self.webhook_url,
+            username=self.service_name,
+            rate_limit_retry=self.rate_limit_retry,
+            avatar_url=self.avatar_url,
+            timeout=self.discord_timeout,
+        )
+        discord.content = (
+            f"Failed to deliver log message: {resp.status_code}: {resp.content}"
+        )
+        discord.execute()
+
+    def emit(self, record: logging.LogRecord):
+        """Send a log entry to Discord."""
+
+        if self.reentry_barrier:
+            # Don't let Discord and request internals to cause logging
+            # and thus infinite recursion. This is because the underlying
+            # requests package itself uses logging.
+            return
+
+        self.reentry_barrier = True
+
+        try:
+
+            # About the Embed footer trick
+            # https://stackoverflow.com/a/65543555/315168
+
+            try:
+                # Run internal log message formatting that will expand %s, %d and such
+                inbound_msg = self.format(record)
+
+                # Choose colour and emoji for this log record
+                colour = self.colours.get(record.levelno) or self.colours[None]
+                emoji = self.emojis.get(record.levelno, "")
+                if emoji:
+                    # Add some space before the next char
+                    emoji += " "
+
+                split_msgs = self.split_by_break_character(inbound_msg)
+
+                for msg in split_msgs:
+
+                    if not msg:
+                        # Don't attempt to deliver empty messages
+                        continue
+
+                    # Start preparing the webhook payload for this messgae
+                    discord = DiscordWebhook(
+                        url=self.webhook_url,
+                        username=self.service_name,
+                        rate_limit_retry=self.rate_limit_retry,
+                        avatar_url=self.avatar_url,
+                        timeout=self.discord_timeout,
+                    )
+
+                    # This message should be straight forward
+                    if emoji:
+                        title = f"{emoji}{record.levelname}"
+                    else:
+                        title = record.levelname
+                    embed = DiscordEmbed(title=title, description=msg, color=colour)
+                    discord.add_embed(embed)
+
+                    # Can be one or list of responses,
+                    #  bad API design
+                    resp = discord.execute()
+                    assert isinstance(
+                        resp, Response
+                    ), f"Discord webhook replies: {resp}"
+
+                    # 429 is rate limit status code
+                    # if the request is retried, it would also log another error, which creates
+                    # infinite loop of rate limit
+                    # https://github.com/lovvskillz/python-discord-webhook/blob/64e5fd52c8d171442762a793c224d983a4202251/discord_webhook/webhook.py#L417-L419
+                    if resp.status_code not in [200, 204, 429]:
+                        self.attempt_to_report_failure(resp, discord)
+
+            except Exception as e:
+                # We cannot use handleError here, because Discord request may cause
+                # infinite recursion when Discord connection fails and
+                # it tries to log.
+                # We fall back to writing the error to stderr
+                print(f"Error from Discord logger {e}", file=sys.stderr)
+                self.handleError(record)
+        finally:
+            self.reentry_barrier = False
