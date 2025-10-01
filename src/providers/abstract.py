@@ -5,6 +5,7 @@ import aiohttp
 
 from config import ProviderConfig, GlobalConfig, handleValidationError
 from ip_fetching import calculateIPv6Address
+from custom_logging import Logger
 
 
 class Record(BaseModel):
@@ -99,17 +100,21 @@ class AsyncProvider(ABC):
                         value=currentIPv4,
                     )
             if not self.globalConfig.disable_v6 and currentIPv6Prefix:
-                for record in zone.ipv6_records:
-                    self._updateSingleDNSRecordLocally(
-                        zoneName=zone.name,
-                        recordName=record.name,
-                        type="AAAA",
-                        value=calculateIPv6Address(
-                            prefix=currentIPv6Prefix,
-                            prefixOffset=record.prefixOffset,
-                            currentAddressOrFixedSuffix=record.suffix,
-                        ),
-                    )
+                try:
+                    for record in zone.ipv6_records:
+                        self._updateSingleDNSRecordLocally(
+                            zoneName=zone.name,
+                            recordName=record.name,
+                            type="AAAA",
+                            value=calculateIPv6Address(
+                                prefix=currentIPv6Prefix,
+                                prefixOffset=record.prefixOffset,
+                                currentAddressOrFixedSuffix=record.suffix,
+                            ),
+                        )
+                except ValueError as e:
+                    # log if error when calculating ipv6 address
+                    Logger.getDNSUpdaterLogger().error(e.args[0])
 
     @abstractmethod
     async def updateDNSConfig(self):
