@@ -63,9 +63,4 @@ def getCurrentIPv6Prefix(
                 f"Unable to establish connection {consecutive_ip_fails.ipV6Fail} time(s) in a row getting current IPv6 Address",
             )
     except ValueError as e:
-        consecutive_ip_fails.ipV6Fail += 1
-        if (
-            consecutive_ip_fails.ipV6Fail
-            > config.global_.allowed_consecutive_ip_fetch_timeouts
-        ):
-            logger.error(str(e.args))
+        logger.error(str(e.args))
