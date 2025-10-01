@@ -1,17 +1,17 @@
 # DNS-Updater
-A python script to update Hetzner DNS records automatically
-- IPv4 A (via api.ipify.org)
-- IPv6 AAAA prefixes (prefix updater using local json config)
+A python-based docker application to regularly update DNS records automatically
+- IPv4 A Records (via api.ipify.org)
+- IPv6 AAAA Records (dynamic prefix updater using a combination of api6.ipify.org and prefixOffst + suffix config)
+
+## Configuration
+
+A detailed config guide can be found [here](/docs/config/README.md).
 
 ## Dependencies
-- requests
-- pyyaml
-- discord-webhook
-  
-Install with `pip3 install requests pyyaml discord-webhook`
+If you are interested in the dependencies of this application, feel free to analyze the [requirements.txt](/requirements.txt) or [Dependency Licenses](/Dependency-Licenses/).
 
 ## Development / Contribution
-This script is targeted to be expanded with other DNS providers. <br>
+This application is targeted to be expanded with other DNS providers. <br>
 Since I personally don't use any other providers, I currently cannot test and develop for them.
 
 The same applies to other Logging providers (currently stdout and Discord).
