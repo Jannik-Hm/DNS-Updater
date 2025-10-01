@@ -20,7 +20,7 @@ The `global` config contains settings like logging, enabling/disabling IPv4 and 
 
 | Attribute                           | Alias                | Type                  | Default   | Description                                                                                         |
 |-------------------------------------|----------------------|-----------------------|-----------|-----------------------------------------------------------------------------------------------------|
-| `cron`                              | –                    | `str`                 | `"*/1 * * * *"` | Cron expression that controls scheduling (default: run every minute).                              |
+| `cron`                              | –                    | `str`                 | `"*/1 * * * *"` | Cron expression that controls scheduling (default: run every minute).                              |
 | `ttl`                               | –                    | `int`                 | `60`      | Time-to-live in seconds.                                                                           |
 | `current_prefix_offset`             | –                    | `str \| None`         | `None`    | Hexadecimal prefix offset. **Required when IPv6 is enabled** (`disable-ipv6 == False`). Must be provided to properly calculate IPv6 addresses. Needs to match the e.g. Prefix ID in OPNSense of the interface this container is connected to. |
 | `dry_run`                           | `dry-run`            | `bool`                | `False`   | If `True`, runs in dry-run mode without making actual changes.                                     |
