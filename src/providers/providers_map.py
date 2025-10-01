@@ -36,7 +36,7 @@ async def providerFetchAndUpdate(
             )
         else:
             logger.debug(
-                f"{type(provider)} Zone Timeout fetching DNS Records within allowed limit",
+                f"{type(provider).__name__} Zone Timeout fetching DNS Records within allowed limit",
             )
         return
     provider.updateDNSRecordsLocally(
@@ -50,11 +50,11 @@ async def providerFetchAndUpdate(
         provider.consecutive_fail_counter.updateFail += 1
         if provider.consecutive_fail_counter.updateFail > allowed_fails:
             logger.error(
-                f"{type(provider)} Zone Timeout updating DNS Records {provider.consecutive_fail_counter.updateFail} time(s) in a row",
+                f"{type(provider).__name__} Zone Timeout updating DNS Records {provider.consecutive_fail_counter.updateFail} time(s) in a row",
             )
         else:
             logger.debug(
-                f"{type(provider)} Zone Timeout updating DNS Records within allowed limit",
+                f"{type(provider).__name__} Zone Timeout updating DNS Records within allowed limit",
             )
     # clear attributes before next loop iteration
     provider.updated_zone_records = {}

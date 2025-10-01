@@ -30,7 +30,7 @@ class AsyncHetznerProvider(AsyncProvider):
         globalConfig = self.globalConfig
 
         apiTimeout = aiohttp.ClientTimeout(total=10)
-
+        # TODO: pagination handling
         getZones = await self.aioSession.get(
             url="https://dns.hetzner.com/api/v1/zones",
             headers={
@@ -63,7 +63,7 @@ class AsyncHetznerProvider(AsyncProvider):
                 self.zone_ids[entry.name] = entry.id
         except ValidationError as e:
             logger.error(
-                "Hetzner Zones Endpoint responded with invalid Response Body",
+                f"Hetzner Zones Endpoint responded with invalid Response Body:\n```{(await getZones.text())}```",
             )
             raise e
 
@@ -84,7 +84,6 @@ class AsyncHetznerProvider(AsyncProvider):
                 case 406:
                     logger.error(
                         f"Get Hetzner Zones - {getRecords.reason}",
-
                     )
                     return
         try:
@@ -131,12 +130,9 @@ class AsyncHetznerProvider(AsyncProvider):
         ]
         if globalConfig.dry_run:
             logger.info(
-                "These Records would be updated:\n"
-                + "```"
-                + json.dumps(
+                f"These Records would be updated:\n```{json.dumps(
                     [record.model_dump() for record in updated_zone_records]
-                )
-                + "```",
+                )}```"
             )
         elif len(updated_zone_records) > 0:
             updateResponse = await self.aioSession.put(
@@ -160,29 +156,23 @@ class AsyncHetznerProvider(AsyncProvider):
                     case 401:
                         logger.error(
                             f"Update Hetzner Records Error - {updateResponse.reason}",
-                            
                         )
                     case 403:
                         logger.error(
                             f"Update Hetzner Records Error - {updateResponse.reason}",
-                            
                         )
                     case 406:
                         logger.error(
                             f"Update Hetzner Records Error - {updateResponse.reason}",
-                            
                         )
                     case 422:
                         logger.error(
                             "Update Hetzner Records Error - Unprocessable entity",
-                            
                         )
             else:
+                # TODO: validate response using pydantic?
                 logger.info(
-                    "These Records were updated:\n"
-                    + "```"
-                    + json.dumps((await updateResponse.json())["records"])
-                    + "```",
+                    f"These Records were updated:\n```{json.dumps((await updateResponse.json())["records"])}```"
                 )
 
         created_zone_records = [
@@ -192,12 +182,7 @@ class AsyncHetznerProvider(AsyncProvider):
         ]
         if globalConfig.dry_run:
             logger.info(
-                "These Records would be created:\n"
-                + "```"
-                + json.dumps(
-                    [record.model_dump() for record in created_zone_records]
-                )
-                + "```",
+                f"These Records would be created:\n```{json.dumps([record.model_dump() for record in created_zone_records])}```"
             )
         elif len(created_zone_records) > 0:
             createResponse = await self.aioSession.post(
@@ -221,37 +206,29 @@ class AsyncHetznerProvider(AsyncProvider):
                     case 401:
                         logger.error(
                             f"Create Hetzner Records Error - {createResponse.reason}",
-                            
                         )
                     case 403:
                         logger.error(
                             f"Create Hetzner Records Error - {createResponse.reason}",
-                            
                         )
                     case 404:
                         logger.error(
                             f"Create Hetzner Records Error - {createResponse.reason}",
-                            
                         )
                     case 406:
                         logger.error(
                             f"Create Hetzner Records Error - {createResponse.reason}",
-                            
                         )
                     case 409:
                         logger.error(
                             f"Create Hetzner Records Error - {createResponse.reason}",
-                            
                         )
                     case 422:
                         logger.error(
                             "Create Hetzner Records Error - Unprocessable entity",
-
                         )
             else:
+                # TODO: validate response using pydantic?
                 logger.info(
-                    "These Records were created:\n"
-                    + "```"
-                    + json.dumps((await createResponse.json())["records"])
-                    + "```",
+                    f"These Records were created:\n```{json.dumps((await createResponse.json())["records"])}```"
                 )
