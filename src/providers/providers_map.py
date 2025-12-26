@@ -7,10 +7,12 @@ from custom_logging import Logger
 
 from .abstract import AsyncProvider
 from .hetzner import AsyncHetznerProvider
+from .hetzner_cloud import AsyncHetznerCloudProvider
 
 
 providerMap: dict[str, Type[AsyncProvider]] = {
     "HETZNER": AsyncHetznerProvider,
+    "HETZNER-CLOUD": AsyncHetznerCloudProvider,
 }
 
 
