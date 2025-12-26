@@ -34,16 +34,26 @@ def getCurrentIPv6Prefix(
     logger = Logger.getDNSUpdaterLogger()
     logger.debug("Getting current IPv6 Address")
     try:
-        ipv6Address = requests.get("https://api6.ipify.org", timeout=5).text
-        if ipv6Address is not None:
-            consecutive_ip_fails.ipV6Fail = 0
-            ipv6Prefix = calculateIPv6Address(
-                prefix=ipaddress.IPv6Address(ipv6Address).exploded.split(":"),
-                prefixOffset="-"
-                + str(config.global_.current_prefix_offset),  # negative Offset
-                currentAddressOrFixedSuffix="::",
-            ).split(":")
-            return ipv6Prefix
+        ipv6Address_response = requests.get("https://api6.ipify.org", timeout=5)
+        if ipv6Address_response.status_code == 200:
+            if ipv6Address_response.text is not None:
+                consecutive_ip_fails.ipV6Fail = 0
+                ipv6Prefix = calculateIPv6Address(
+                    prefix=ipaddress.IPv6Address(ipv6Address_response.text).exploded.split(":"),
+                    prefixOffset="-"
+                    + str(config.global_.current_prefix_offset),  # negative Offset
+                    currentAddressOrFixedSuffix="::",
+                ).split(":")
+                return ipv6Prefix
+        else:
+            consecutive_ip_fails.ipV4Fail += 1
+            if (
+                consecutive_ip_fails.ipV6Fail
+                > config.global_.allowed_consecutive_ip_fetch_timeouts
+            ):
+                logger.error(
+                    f"Non OK Response {consecutive_ip_fails.ipV4Fail} time(s) in a row getting current IPv4 Address",
+                )
     except requests.exceptions.ConnectTimeout:
         consecutive_ip_fails.ipV6Fail += 1
         if (
