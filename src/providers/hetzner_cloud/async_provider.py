@@ -40,10 +40,15 @@ class AsyncHetznerCloudProvider(AsyncProvider):
         if getRecords.status != 200:
             match getRecords.status:
                 case 401:
-                    return f"Get Hetzner Zones - {getRecords.reason}"
+                    logger.error(f"Get Hetzner Records - {getRecords.reason}")
                     return
                 case 406:
-                    return f"Get Hetzner Zones - {getRecords.reason}"
+                    logger.error(f"Get Hetzner Records - {getRecords.reason}")
+                    return
+                case _:
+                    logger.error(
+                        f"Get Hetzner Records - Unknown Error Code {getRecords.status}"
+                    )
                     return
         try:
             records: HetznerCloudRecords = HetznerCloudRecords.model_validate(
@@ -77,11 +82,20 @@ class AsyncHetznerCloudProvider(AsyncProvider):
         if getZones.status != 200:
             match getZones.status:
                 case 400:
-                    return "Get Hetzner Zones - Pagination selectors are mutually exclusive"
+                    logger.error(
+                        "Get Hetzner Zones - Pagination selectors are mutually exclusive"
+                    )
                 case 401:
-                    return f"Get Hetzner Zones - {getZones.reason}"
+                    logger.error(f"Get Hetzner Zones - {getZones.reason}")
+                    return
                 case 406:
-                    return f"Get Hetzner Zones - {getZones.reason}"
+                    logger.error(f"Get Hetzner Zones - {getZones.reason}")
+                    return
+                case _:
+                    logger.error(
+                        f"Get Hetzner Zones - Unknown Error Code {getZones.status}"
+                    )
+                    return
         try:
             zones: HetznerCloudZones = HetznerCloudZones.model_validate(
                 await getZones.json()
@@ -122,9 +136,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
             )
         )
 
-    def updateDNSRecord(
-        self, type: str, name: str, value: str, zoneName: str
-    ):
+    def updateDNSRecord(self, type: str, name: str, value: str, zoneName: str):
         temp_record = self.zone_records[self.zone_ids[zoneName]][f"{type}-{name}"]
 
         if (
@@ -241,7 +253,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                             "type": record.type,
                             "name": record.name,
                             "zone": record.zone,
-                            "ttl": record.ttl
+                            "ttl": record.ttl,
                         }
                     ),
                     None,
@@ -311,7 +323,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                             "type": record.type,
                             "name": record.name,
                             "zone": record.zone,
-                            "values": [record.value for record in record.records]
+                            "values": [record.value for record in record.records],
                         }
                     ),
                     None,
