@@ -56,28 +56,36 @@ class AsyncProvider(ABC):
 
     def createDNSRecord(self, type: str, name: str, value: str, zoneName: str):
         self.created_zone_records[self.zone_ids[zoneName]][f"{type}-{name}"] = Record(
-            ttl=60, name=name, value=value, type=type
+            ttl=self.globalConfig.ttl, name=name, value=value, type=type
         )
+
+    def updateDNSRecord(self, type: str, name: str, value: str, zoneName: str):
+        temp_record = self.zone_records[self.zone_ids[zoneName]][
+            f"{type}-{name}"
+        ]
+
+        if temp_record.value == value and temp_record.ttl == self.globalConfig.ttl:
+            # skip if record value is unchanged
+            return False
+
+        temp_record.value = value
+        temp_record.ttl = self.globalConfig.ttl
+        if not self.zone_ids[zoneName] in self.updated_zone_records:
+            self.updated_zone_records[self.zone_ids[zoneName]] = {}
+        self.updated_zone_records[self.zone_ids[zoneName]][
+            f"{type}-{name}"
+        ] = temp_record
 
     def _updateSingleDNSRecordLocally(
         self, zoneName: str, recordName: str, type: str, value: str
     ) -> bool:
         if f"{type}-{recordName}" in self.zone_records[self.zone_ids[zoneName]]:
-            temp_record = self.zone_records[self.zone_ids[zoneName]][
-                f"{type}-{recordName}"
-            ]
-
-            if temp_record.value == value and temp_record.ttl == self.globalConfig.ttl:
-                # skip if record value is unchanged
-                return False
-
-            temp_record.value = value
-            temp_record.ttl = self.globalConfig.ttl
-            if not self.zone_ids[zoneName] in self.updated_zone_records:
-                self.updated_zone_records[self.zone_ids[zoneName]] = {}
-            self.updated_zone_records[self.zone_ids[zoneName]][
-                f"{type}-{recordName}"
-            ] = temp_record
+            self.updateDNSRecord(
+                type=type,
+                name=recordName,
+                value=value,
+                zoneName=zoneName,
+            )
         else:
             self.createDNSRecord(
                 type=type,
