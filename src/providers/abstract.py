@@ -79,7 +79,7 @@ class AsyncProvider(ABC):
     def _updateSingleDNSRecordLocally(
         self, zoneName: str, recordName: str, type: str, value: str
     ) -> bool:
-        if f"{type}-{recordName}" in self.zone_records[self.zone_ids[zoneName]]:
+        if zoneName in self.zone_ids and f"{type}-{recordName}" in self.zone_records[self.zone_ids[zoneName]]:
             self.updateDNSRecord(
                 type=type,
                 name=recordName,
