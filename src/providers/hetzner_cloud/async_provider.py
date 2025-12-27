@@ -123,20 +123,20 @@ class AsyncHetznerCloudProvider(AsyncProvider):
         )
 
     def updateDNSRecord(
-        self, type: str, name: str, value: list[HetznerCloudRRSetRecord], zoneName: str
+        self, type: str, name: str, value: str, zoneName: str
     ):
         temp_record = self.zone_records[self.zone_ids[zoneName]][f"{type}-{name}"]
 
         if (
             temp_record.records
-            == [HetznerCloudRRSetRecord(value=name, comment="Managed by DNS Updater")]
+            == [HetznerCloudRRSetRecord(value=value, comment="Managed by DNS Updater")]
             and temp_record.ttl == self.globalConfig.ttl
         ):
             # skip if record value is unchanged
             return False
 
         temp_record.records = [
-            HetznerCloudRRSetRecord(value=name, comment="Managed by DNS Updater")
+            HetznerCloudRRSetRecord(value=value, comment="Managed by DNS Updater")
         ]
         temp_record.ttl = self.globalConfig.ttl
         if not self.zone_ids[zoneName] in self.updated_zone_records:
