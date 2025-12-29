@@ -108,7 +108,7 @@ class AsyncHetznerProvider(AsyncProvider):
             self.created_zone_records[self.zone_ids[zoneName]] = {}
         self.created_zone_records[self.zone_ids[zoneName]][f"{type}-{name}"] = (
             HetznerRecord(
-                ttl=60,
+                ttl=self.globalConfig.ttl,
                 name=name,
                 value=value,
                 type=type,
