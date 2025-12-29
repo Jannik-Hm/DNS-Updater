@@ -27,6 +27,11 @@ async def providerFetchAndUpdate(
         provider.config.allowed_consecutive_timeouts
         or config.global_.allowed_consecutive_provider_timeouts
     )
+    # clear attributes before loop iteration
+    provider.updated_zone_records = {}
+    provider.created_zone_records = {}
+    provider.zone_ids = {}
+    provider.zone_records = {}
     try:
         await provider.getCurrentDNSConfig()
         provider.consecutive_fail_counter.fetchFail = 0
@@ -58,11 +63,6 @@ async def providerFetchAndUpdate(
             logger.debug(
                 f"{type(provider).__name__} Zone Timeout updating DNS Records within allowed limit",
             )
-    # clear attributes before next loop iteration
-    provider.updated_zone_records = {}
-    provider.created_zone_records = {}
-    provider.zone_ids = {}
-    provider.zone_records = {}
 
 
 async def run_all_providers(
