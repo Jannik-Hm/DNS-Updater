@@ -37,7 +37,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
             },
             timeout=apiTimeout,  # wait longer for bigger responses in case of a lot of records
         )
-        if getRecords.status != 200:
+        if getRecords.status >= 400:
             match getRecords.status:
                 case 401:
                     logger.error(f"Get Hetzner Records - {getRecords.reason}")
@@ -79,7 +79,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
             timeout=apiTimeout,
         )
 
-        if getZones.status != 200:
+        if getZones.status >= 400:
             match getZones.status:
                 case 400:
                     logger.error(
@@ -174,7 +174,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
             timeout=apiTimeout,
         )
 
-        if createResponse.status != 200:
+        if createResponse.status >= 400:
             match createResponse.status:
                 case 401:
                     return "", f"Create Hetzner Records Error - {createResponse.reason}"
@@ -209,7 +209,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
             timeout=apiTimeout,
         )
 
-        if updateTTLResponse.status != 200:
+        if updateTTLResponse.status >= 400:
             match updateTTLResponse.status:
                 case 401:
                     return (
@@ -244,8 +244,8 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                         f"Update Hetzner Records TTL Undefined Error Code: {updateTTLResponse.status}",
                     )
         else:
-            response = await updateTTLResponse.json()
-            if response["error"] is None:
+            response: dict = await updateTTLResponse.json()
+            if response.get("error") is None:
                 return (
                     json.dumps(
                         {
@@ -266,16 +266,16 @@ class AsyncHetznerCloudProvider(AsyncProvider):
         name_encoded = quote(record.name)
         type_encoded = quote(record.type.upper())
         updateValuesResponse = await self.aioSession.post(
-            url=f"https://api.hetzner.cloud/v1/zones/{record.zone}/rrsets/{name_encoded}/{type_encoded}/actions/update_records",
+            url=f"https://api.hetzner.cloud/v1/zones/{record.zone}/rrsets/{name_encoded}/{type_encoded}/actions/set_records",
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.config.provider_config.api_token}",
             },
-            data=json.dumps({"records": record.records}),
+            data=json.dumps({"records": [record.model_dump() for record in record.records]}),
             timeout=apiTimeout,
         )
 
-        if updateValuesResponse.status != 200:
+        if updateValuesResponse.status >= 400:
             match updateValuesResponse.status:
                 case 401:
                     return (
@@ -313,8 +313,8 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                         f"Update Hetzner Records Values Undefined Error Code: {updateValuesResponse.status}",
                     )
         else:
-            response = await updateValuesResponse.json()
-            if response["error"] is None:
+            response: dict = await updateValuesResponse.json()
+            if response.get("error") is None:
                 return (
                     json.dumps(
                         {
@@ -327,7 +327,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                     None,
                 )
             else:
-                return "", f"Update Hetzner Records TTL Error - {response["error"]}"
+                return "", f"Update Hetzner Records Values Error - {response["error"]}"
 
     async def updateDNSConfig(self):
         logger = Logger.getDNSUpdaterLogger()
@@ -350,7 +350,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
             update_record_tasks: list[
                 CoroutineType[Any, Any, tuple[str, str | None]]
             ] = []
-            for zone_name, zone in self.updated_zone_records.items():
+            for zone_id, zone in self.updated_zone_records.items():
                 for record in zone.values():
                     if record.ttl != self.globalConfig.ttl:
                         update_record_tasks.append(
@@ -360,7 +360,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                         )
                     if (
                         record.records
-                        != self.zone_records[self.zone_ids[zone_name]][
+                        != self.zone_records[zone_id][
                             f"{record.type}-{record.name}"
                         ]
                     ):
@@ -401,11 +401,11 @@ class AsyncHetznerCloudProvider(AsyncProvider):
             create_record_tasks: list[
                 CoroutineType[Any, Any, tuple[str, str | None]]
             ] = []
-            for zone_name, zone in self.created_zone_records.items():
+            for zone_id, zone in self.created_zone_records.items():
                 for record in zone.values():
                     create_record_tasks.append(
                         self.createDNSRecordAPI(
-                            zone=zone_name, record=record, apiTimeout=apiTimeout
+                            zone=zone_id, record=record, apiTimeout=apiTimeout
                         )
                     )
             results = await asyncio.gather(
