@@ -58,7 +58,7 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                 if (entry.type == "A" and not self.globalConfig.disable_v4) or (
                     entry.type == "AAAA" and not self.globalConfig.disable_v6
                 ):
-                    self.zone_records[entry.zone][entry.type + "-" + entry.name] = entry
+                    self.zone_records[str(entry.zone)][entry.type + "-" + entry.name] = entry
         except ValidationError as e:
             logger.error(
                 "Hetzner Records Endpoint responded with invalid Response Body",
@@ -101,8 +101,8 @@ class AsyncHetznerCloudProvider(AsyncProvider):
                 await getZones.json()
             )
             for entry in zones.zones:
-                self.zone_records[entry.id] = {}
-                self.zone_ids[entry.name] = entry.id
+                self.zone_records[str(entry.id)] = {}
+                self.zone_ids[entry.name] = str(entry.id)
         except ValidationError as e:
             logger.error(
                 f"Hetzner Zones Endpoint responded with invalid Response Body:\n```{(await getZones.text())}```",
@@ -197,11 +197,10 @@ class AsyncHetznerCloudProvider(AsyncProvider):
     async def updateDNSRecordTTLAPI(
         self, record: HetznerCloudRRSet, apiTimeout: aiohttp.ClientTimeout
     ) -> tuple[str, str | None]:
-        zone_encoded = quote(record.zone)
         name_encoded = quote(record.name)
         type_encoded = quote(record.type.upper())
         updateTTLResponse = await self.aioSession.post(
-            url=f"https://api.hetzner.cloud/v1/zones/{zone_encoded}/rrsets/{name_encoded}/{type_encoded}/actions/change_ttl",
+            url=f"https://api.hetzner.cloud/v1/zones/{record.zone}/rrsets/{name_encoded}/{type_encoded}/actions/change_ttl",
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.config.provider_config.api_token}",
@@ -264,11 +263,10 @@ class AsyncHetznerCloudProvider(AsyncProvider):
     async def updateDNSRecordValuesAPI(
         self, record: HetznerCloudRRSet, apiTimeout: aiohttp.ClientTimeout
     ) -> tuple[str, str | None]:
-        zone_encoded = quote(record.zone)
         name_encoded = quote(record.name)
         type_encoded = quote(record.type.upper())
         updateValuesResponse = await self.aioSession.post(
-            url=f"https://api.hetzner.cloud/v1/zones/{zone_encoded}/rrsets/{name_encoded}/{type_encoded}/actions/update_records",
+            url=f"https://api.hetzner.cloud/v1/zones/{record.zone}/rrsets/{name_encoded}/{type_encoded}/actions/update_records",
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.config.provider_config.api_token}",

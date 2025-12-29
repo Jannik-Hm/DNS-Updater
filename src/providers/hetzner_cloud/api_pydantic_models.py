@@ -24,6 +24,9 @@ class HetznerCloudNameServer(BaseModel):
 class HetznerCloudZoneProtection(BaseModel):
     delete: bool
 
+class HetznerCloudRRSetProtection(BaseModel):
+    change: bool
+
 class HetznerCloudAuthoritativeNameservers(BaseModel):
     assigned: list[str]
     delegated: list[str]
@@ -31,7 +34,7 @@ class HetznerCloudAuthoritativeNameservers(BaseModel):
     delegation_status: Literal["valid", "partially-valid", "invalid", "lame", "unregistered", "unknown"]
 
 class HetznerCloudZone(BaseModel):
-    id: str
+    id: int
     name: str
     created: str
     mode: Literal["primary", "secondary"]
@@ -56,17 +59,16 @@ class HetznerCloudRRSetRecord(BaseModel):
     comment: str | None = None
 
 class HetznerCloudRRSet(BaseModel):
-    id: str | None = None # not part of post, put, bulk post
+    id: str
     name: str
     type: str
     ttl: int | None = None
     labels: dict[str, str] | None = None
-    protection: HetznerCloudZoneProtection | None = None
+    protection: HetznerCloudRRSetProtection | None = None
     records: list[HetznerCloudRRSetRecord]
-    zone: str
+    zone: int
 
 class CreateHetznerCloudRRSet(BaseModel):
-    id: str | None = None # not part of post, put, bulk post
     name: str
     type: str
     ttl: int | None = None
